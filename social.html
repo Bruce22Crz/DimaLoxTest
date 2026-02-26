@@ -994,6 +994,7 @@
         </button>
         <button class="nav-item" id="navAdmin" onclick="showAdmin()" style="display:none;">
             <span class="nav-icon">🔧</span>
+            <span>Админ</span>
         </button>
 
         <div class="nav-divider"></div>
@@ -2678,25 +2679,60 @@ function clearChatPhotoPreview() {
 }
 
 // ===== FIX: следим за реальным числом подписок через real-time listener =====
+let _watchFollowUid = null
 function watchFollowCounts(uid) {
-    // Watch following count (lightweight - only this user's node)
+    // Detach previous listener if watching a different uid
+    if (_watchFollowUid && _watchFollowUid !== uid) {
+        db.ref(`social_follows/${_watchFollowUid}`).off('value')
+    }
+    _watchFollowUid = uid
+    // Watch following count only (lightweight - only this user's node)
+    // Followers count is set by loadProfile and refreshed after toggleFollow
     db.ref(`social_follows/${uid}`).on('value', snap => {
         const el = document.getElementById('profileFollowing')
         if (el) el.textContent = snap.numChildren()
     })
-    // Followers: do NOT use .on() on all social_follows — it fires before all data is loaded
-    // Instead do a one-time count now, and refresh after toggle actions
-    refreshFollowersCount(uid)
 }
 
 async function refreshFollowersCount(uid) {
     if (!uid) return
-    const snap = await db.ref('social_follows').once('value')
+    // Read total user count first to know how many follower nodes to expect
+    const usersSnap = await db.ref('social_users').once('value')
+    const totalUsers = usersSnap.numChildren()
+    // Retry until we get a stable full snapshot (Firebase can return partial data on first read)
     let count = 0
-    snap.forEach(node => { if (node.child(uid).exists()) count++ })
+    let attempts = 0
+    while (attempts < 5) {
+        const snap = await db.ref('social_follows').once('value')
+        if (snap.numChildren() >= totalUsers - 1 || attempts >= 2) {
+            count = 0
+            snap.forEach(node => { if (node.child(uid).exists()) count++ })
+            break
+        }
+        attempts++
+        await new Promise(r => setTimeout(r, 300))
+    }
     const el = document.getElementById('profileFollowers')
     if (el) el.textContent = count
 }
+
+// ===== DEBUG HELPER =====
+window.debugFollowers = async function(uid) {
+    uid = uid || viewingUid || currentUser?.uid
+    console.log('=== debugFollowers for uid:', uid, '===')
+    const allSnap = await db.ref('social_follows').once('value')
+    console.log('social_follows nodes:', allSnap.numChildren())
+    let count = 0
+    allSnap.forEach(node => {
+        console.log('  node:', node.key, '| follows target?', node.child(uid).exists(), '| children:', node.numChildren())
+        if (node.child(uid).exists()) count++
+    })
+    console.log('RESULT: followers =', count)
+    const userSnap = await db.ref(`social_users/${uid}`).once('value')
+    console.log('social_users.followers field:', userSnap.val()?.followers)
+    return count
+}
+console.log('TIP: run debugFollowers() in console to check followers data')
 
 // ===== ADMIN PANEL JS =====
 function showAdmin() {

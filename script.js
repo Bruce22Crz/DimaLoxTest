@@ -4866,13 +4866,27 @@ window.submitPromoCode = async function () {
 			activated: false,
 			addedAt: Date.now(),
 		}
-		await database.ref(`users/${uid}/inventory`).push(ticket)
+		console.log(
+			'[Promo] Записываем в инвентарь:',
+			`users/${uid}/inventory`,
+			ticket,
+		)
+		const pushRef = await database.ref(`users/${uid}/inventory`).push(ticket)
+		console.log('[Promo] ✅ Тикет добавлен, ключ:', pushRef.key)
 
 		// 7. Закрываем, показываем тост
 		document.getElementById('promoModal').classList.remove('active')
 		showInventoryToast(
 			'🎟️ Тикет «' + ticket.name + '» добавлен в инвентарь! Открой 🎒',
 		)
+		// Сбросить listener чтобы при следующем открытии инвентаря данные загрузились свежо
+		if (inventoryListener && inventoryListenerUid) {
+			database
+				.ref(`users/${inventoryListenerUid}/inventory`)
+				.off('value', inventoryListener)
+			inventoryListener = null
+			inventoryListenerUid = null
+		}
 	} catch (e) {
 		errorEl.textContent = '❌ Ошибка: ' + e.message
 	}
@@ -4897,26 +4911,63 @@ window.openInventory = async function () {
 window.closeInventoryModal = function (e) {
 	if (e && e.target !== document.getElementById('inventoryModal')) return
 	document.getElementById('inventoryModal').classList.remove('active')
+	// Detach listener to avoid memory leaks
+	if (inventoryListener && inventoryListenerUid) {
+		database
+			.ref(`users/${inventoryListenerUid}/inventory`)
+			.off('value', inventoryListener)
+		inventoryListener = null
+		inventoryListenerUid = null
+	}
 }
 
+let inventoryListener = null
+let inventoryListenerUid = null
+
 async function loadInventory() {
-	const uid = window.currentUser.uid
+	const uid = window.currentUser?.uid
+	if (!uid) return
 	const grid = document.getElementById('inventoryGrid')
 	if (!grid) return
 	grid.innerHTML =
 		'<div style="color:var(--text-secondary);font-size:0.85rem;grid-column:1/-1;text-align:center;padding:20px;">Загружаем...</div>'
 
-	try {
-		const snap = await database.ref(`users/${uid}/inventory`).once('value')
-		inventoryItems = []
-		if (snap.exists()) {
-			snap.forEach(c => inventoryItems.push({ key: c.key, ...c.val() }))
-		}
-		selectedInvItem = null
-		renderInventory()
-	} catch (e) {
-		grid.innerHTML =
-			'<div style="color:#f4212e;font-size:0.85rem;grid-column:1/-1;text-align:center;padding:20px;">Ошибка загрузки</div>'
+	// Detach previous listener if different user
+	if (inventoryListener && inventoryListenerUid !== uid) {
+		database
+			.ref(`users/${inventoryListenerUid}/inventory`)
+			.off('value', inventoryListener)
+		inventoryListener = null
+	}
+
+	// Use real-time listener so inventory updates instantly after promo activation
+	if (!inventoryListener) {
+		inventoryListenerUid = uid
+		inventoryListener = database.ref(`users/${uid}/inventory`).on(
+			'value',
+			snap => {
+				inventoryItems = []
+				if (snap && snap.exists()) {
+					snap.forEach(c => {
+						const v = c.val()
+						if (v) inventoryItems.push({ key: c.key, ...v })
+					})
+				}
+				console.log(
+					'[Inventory] Загружено предметов:',
+					inventoryItems.length,
+					inventoryItems,
+				)
+				selectedInvItem = null
+				renderInventory()
+			},
+			err => {
+				console.error('[Inventory] Ошибка Firebase:', err.code, err.message)
+				const g = document.getElementById('inventoryGrid')
+				if (g)
+					g.innerHTML = `<div style="color:#f4212e;font-size:0.85rem;grid-column:1/-1;text-align:center;padding:20px;">Ошибка: ${err.message}</div>`
+			},
+		)
 	}
 }
 
@@ -5634,6 +5685,20 @@ window.adminDeletePromo = async function (code) {
 				ctx.shadowBlur = 0
 			}
 		})
+
+		// Draw floating multiplier labels
+		floatingLabels.forEach(lbl => {
+			ctx.globalAlpha = lbl.alpha
+			ctx.font = `bold ${Math.max(14, W * 0.045)}px Inter, sans-serif`
+			ctx.textAlign = 'center'
+			ctx.textBaseline = 'middle'
+			ctx.fillStyle = lbl.color
+			ctx.shadowColor = lbl.color
+			ctx.shadowBlur = 12
+			ctx.fillText(lbl.mult + 'x', lbl.x, lbl.y)
+			ctx.shadowBlur = 0
+			ctx.globalAlpha = 1
+		})
 	}
 
 	function roundRect(ctx, x, y, w, h, r) {
@@ -5690,7 +5755,7 @@ window.adminDeletePromo = async function (code) {
 			row: 0,
 			targetX: pathX[0],
 			targetY: PADDING_Y,
-			speed: 3.5,
+			speed: 1.7,
 			bucketIdx: Math.min(bucketIdx, buckets.length - 1),
 		}
 		return ball
@@ -5739,8 +5804,18 @@ window.adminDeletePromo = async function (code) {
 					ball.y += (dy / dist) * ball.speed * 1.2
 				}
 			})
+
+			// Animate floating labels
+			floatingLabels = floatingLabels.filter(lbl => lbl.life > 0)
+			floatingLabels.forEach(lbl => {
+				lbl.y += lbl.vy
+				lbl.life--
+				lbl.alpha = Math.min(1, lbl.life / 30)
+			})
+
 			drawPlinko()
-			if (anyActive) {
+			const hasLabels = floatingLabels.length > 0
+			if (anyActive || hasLabels) {
 				plinkoAnimFrame = requestAnimationFrame(frame)
 			} else {
 				animRunning = false
@@ -5789,6 +5864,23 @@ window.adminDeletePromo = async function (code) {
 			if (el.textContent === msg) el.textContent = ''
 		}, 3500)
 	}
+
+	// Floating multiplier overlay on canvas
+	let floatingLabels = []
+	function showFloatingMultiplier(x, y, mult, color) {
+		floatingLabels.push({
+			x,
+			y: y - 10,
+			mult,
+			color,
+			alpha: 1.0,
+			vy: -1.2,
+			life: 90,
+		})
+	}
+	// Extend drawPlinko to also render floating labels
+	const _origDraw = drawPlinko
+	// We'll hook into animation frame instead
 
 	window.setPlinkoBetPct = function (pct) {
 		const amount = Math.max(1, Math.floor(userCurrency * pct))
@@ -5842,6 +5934,8 @@ window.adminDeletePromo = async function (code) {
 		const ballColors = ['#f4212e', '#1d9bf0', '#ffd700', '#00ba7c', '#8b5cf6']
 
 		plinkoActiveBalls = []
+		const ballResults = []
+
 		for (let i = 0; i < plinkoBalls; i++) {
 			const color = ballColors[i % ballColors.length]
 			const ball = createAnimatedBall(color, bucketIdx => {
@@ -5850,21 +5944,32 @@ window.adminDeletePromo = async function (code) {
 				totalWin += win
 				if (mult > plinkoStats.maxMult) plinkoStats.maxMult = mult
 				landed++
+				ballResults.push({ mult, win, color })
+
+				// Show floating X on canvas for each ball
+				showFloatingMultiplier(
+					buckets[bucketIdx].x,
+					buckets[bucketIdx].y - 20,
+					mult,
+					color,
+				)
 
 				if (landed === plinkoBalls) {
 					addCurrency(totalWin)
 					plinkoStats.games += plinkoBalls
 					const net = totalWin - totalBet
+					// Build per-ball summary
+					const multsList = ballResults.map(r => `${r.mult}x`).join(' · ')
 					if (net >= 0) {
 						plinkoStats.won += net
-						showPlinkoResult(
-							`🎉 +${totalWin} монет! (ставка: ${totalBet})`,
-							'win',
-						)
+						showPlinkoResult(`🎉 ${multsList} → +${totalWin} монет!`, 'win')
 						if (window.SND) window.SND.casinoWin()
 					} else {
 						plinkoStats.lost += Math.abs(net)
-						showPlinkoResult(`😢 Выиграл ${totalWin} из ${totalBet}`, 'loss')
+						showPlinkoResult(
+							`😢 ${multsList} → ${totalWin} из ${totalBet}`,
+							'loss',
+						)
 					}
 					updatePlinkoBalance()
 					updatePlinkoStats()

@@ -747,6 +747,23 @@
         }
         .username-submit:disabled { opacity: 0.5; cursor: not-allowed; }
 
+        /* ===== CUSTOM SCROLLBAR ===== */
+        ::-webkit-scrollbar {
+            width: 6px;
+            height: 6px;
+        }
+        ::-webkit-scrollbar-track {
+            background: transparent;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #2a2a2a;
+            border-radius: 10px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: #3a3a3a;
+        }
+        * { scrollbar-width: thin; scrollbar-color: #2a2a2a transparent; }
+
         /* ===== RESPONSIVE ===== */
         @media (max-width: 1100px) {
             .right-panel { display: none; }
@@ -2072,6 +2089,20 @@ function loadSocialChat() {
     })
 }
 
+// Cache for social user profiles
+const socialUserCache = {}
+
+async function getSocialUser(uid) {
+    if (!uid) return null
+    if (socialUserCache[uid]) return socialUserCache[uid]
+    try {
+        const snap = await db.ref(`social_users/${uid}`).once('value')
+        const data = snap.exists() ? snap.val() : null
+        socialUserCache[uid] = data
+        return data
+    } catch(e) { return null }
+}
+
 function appendSocialChatMsg(msg, container, scroll) {
     if (!msg || container.querySelector(`[data-msg-id="${msg.key}"]`)) return
 
@@ -2083,13 +2114,6 @@ function appendSocialChatMsg(msg, container, scroll) {
     div.dataset.msgId = msg.key
     div.style.cssText = `display:flex;gap:10px;align-items:flex-start;${isMe ? 'flex-direction:row-reverse;' : ''}`
 
-    const avatarEl = `<div style="
-        width:34px;height:34px;border-radius:50%;
-        background:${isMe ? 'var(--accent)' : 'var(--bg4)'};
-        display:flex;align-items:center;justify-content:center;
-        font-size:0.85rem;font-weight:700;color:#fff;flex-shrink:0;
-    ">${avatarChar}</div>`
-
     const bubbleColor = isMe ? 'var(--accent)' : 'var(--bg3)'
     const bubbleTextColor = isMe ? '#fff' : 'var(--text)'
     const align = isMe ? 'right' : 'left'
@@ -2098,8 +2122,29 @@ function appendSocialChatMsg(msg, container, scroll) {
     if (msg.text) content += `<div style="font-size:0.92rem;line-height:1.5;word-break:break-word;">${esc(msg.text)}</div>`
     if (msg.image) content += `<img src="${msg.image}" style="max-width:220px;border-radius:10px;margin-top:4px;cursor:pointer;" onclick="this.requestFullscreen?.()" loading="lazy">`
 
-    div.innerHTML = avatarEl + `<div style="max-width:75%;">
-        ${!isMe ? `<div style="font-size:0.75rem;color:var(--text2);margin-bottom:3px;text-align:${align};">${esc(msg.username || 'Гость')}</div>` : ''}
+    // Placeholder avatar while loading social profile
+    const avatarId = `av-${msg.key}`
+    const nameId = `nm-${msg.key}`
+
+    const avatarHtml = msg.uid
+        ? `<div id="${avatarId}" style="
+            width:36px;height:36px;border-radius:50%;
+            background:${isMe ? 'var(--accent)' : 'var(--bg4)'};
+            display:flex;align-items:center;justify-content:center;
+            font-size:0.88rem;font-weight:700;color:#fff;flex-shrink:0;
+            cursor:pointer;overflow:hidden;
+          " onclick="showProfile('${msg.uid}')">${avatarChar}</div>`
+        : `<div style="
+            width:36px;height:36px;border-radius:50%;
+            background:var(--bg4);
+            display:flex;align-items:center;justify-content:center;
+            font-size:0.88rem;font-weight:700;color:#fff;flex-shrink:0;
+          ">${avatarChar}</div>`
+
+    const usernameHtml = `<div id="${nameId}" style="font-size:0.75rem;color:var(--text2);margin-bottom:3px;text-align:${align};cursor:pointer;" onclick="showProfile('${msg.uid}')">${esc(msg.username || 'Гость')}</div>`
+
+    div.innerHTML = avatarHtml + `<div style="max-width:75%;">
+        ${!isMe ? usernameHtml : ''}
         <div style="
             background:${bubbleColor};
             color:${bubbleTextColor};
@@ -2112,6 +2157,23 @@ function appendSocialChatMsg(msg, container, scroll) {
 
     container.appendChild(div)
     if (scroll) container.scrollTop = container.scrollHeight
+
+    // Async: load social profile and update avatar + username
+    if (msg.uid) {
+        getSocialUser(msg.uid).then(profile => {
+            if (!profile) return
+            const avEl = document.getElementById(avatarId)
+            const nmEl = document.getElementById(nameId)
+            if (avEl) {
+                if (profile.avatar) {
+                    avEl.innerHTML = `<img src="${profile.avatar}" style="width:100%;height:100%;object-fit:cover;border-radius:50%;" onerror="this.parentElement.textContent='${avatarChar}'">`
+                }
+            }
+            if (nmEl) {
+                nmEl.textContent = profile.name || profile.username || msg.username || 'Гость'
+            }
+        })
+    }
 }
 
 function autoResizeSocialChat(el) {

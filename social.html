@@ -2164,15 +2164,20 @@ function appendSocialChatMsg(msg, container, scroll) {
             if (!profile) return
             const avEl = document.getElementById(avatarId)
             const nmEl = document.getElementById(nameId)
-            if (avEl) {
-                if (profile.avatar) {
-                    avEl.innerHTML = `<img src="${profile.avatar}" style="width:100%;height:100%;object-fit:cover;border-radius:50%;" onerror="this.parentElement.textContent='${avatarChar}'">`
-                }
+            if (avEl && profile.avatar) {
+                // Replace div content with actual image
+                avEl.style.background = 'transparent'
+                avEl.innerHTML = ''
+                const img = document.createElement('img')
+                img.src = profile.avatar
+                img.style.cssText = 'width:36px;height:36px;object-fit:cover;border-radius:50%;display:block;'
+                img.onerror = () => { avEl.style.background = isMe ? 'var(--accent)' : 'var(--bg4)'; avEl.innerHTML = avatarChar }
+                avEl.appendChild(img)
             }
             if (nmEl) {
                 nmEl.textContent = profile.name || profile.username || msg.username || 'Гость'
             }
-        })
+        }).catch(() => {})
     }
 }
 

@@ -1,0 +1,2159 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Доска Позора — Соцсеть</title>
+    <link rel="icon" type="image/png" href="img/ico.png">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --bg: #0f0f0f;
+            --bg2: #161616;
+            --bg3: #1e1e1e;
+            --bg4: #262626;
+            --border: #2a2a2a;
+            --accent: #1d9bf0;
+            --accent2: #8b5cf6;
+            --text: #e7e9ea;
+            --text2: #71767b;
+            --danger: #f4212e;
+            --green: #00ba7c;
+            --gold: #ffd700;
+        }
+        * { margin:0; padding:0; box-sizing:border-box; }
+        body {
+            font-family: 'Inter', sans-serif;
+            background: var(--bg);
+            color: var(--text);
+            min-height: 100vh;
+        }
+
+        /* ===== LAYOUT ===== */
+        .layout {
+            display: flex;
+            max-width: 1280px;
+            margin: 0 auto;
+            min-height: 100vh;
+        }
+
+        /* ===== SIDEBAR ===== */
+        .sidebar {
+            width: 260px;
+            min-width: 260px;
+            padding: 16px 12px;
+            position: sticky;
+            top: 0;
+            height: 100vh;
+            display: flex;
+            flex-direction: column;
+            border-right: 1px solid var(--border);
+        }
+        .logo-row {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 16px 12px 28px;
+        }
+        .logo-emoji { font-size: 1.6rem; }
+        .logo-text {
+            font-size: 1.05rem;
+            font-weight: 800;
+            color: var(--text);
+        }
+        .logo-back {
+            margin-left: auto;
+            background: var(--bg3);
+            border: 1px solid var(--border);
+            color: var(--text2);
+            border-radius: 20px;
+            padding: 7px 20px;
+            font-size: 0.85rem;
+            font-weight: 600;
+            cursor: pointer;
+            text-decoration: none;
+            transition: all 0.2s;
+            white-space: nowrap;
+        }
+        .logo-back:hover { color: var(--text); background: var(--bg4); }
+
+        .nav-item {
+            display: flex;
+            align-items: center;
+            gap: 14px;
+            padding: 13px 16px;
+            border-radius: 50px;
+            cursor: pointer;
+            border: none;
+            background: none;
+            color: var(--text);
+            font-size: 1rem;
+            font-weight: 500;
+            font-family: 'Inter', sans-serif;
+            width: 100%;
+            text-align: left;
+            transition: background 0.15s;
+        }
+        .nav-item:hover { background: rgba(255,255,255,0.06); }
+        .nav-item.active { font-weight: 700; }
+        .nav-item.active .nav-icon { color: var(--accent); }
+        .nav-icon { font-size: 1.2rem; width: 24px; text-align: center; }
+
+        .nav-divider { height: 1px; background: var(--border); margin: 10px 0; }
+
+        .user-chip {
+            margin-top: auto;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 12px 14px;
+            border-radius: 50px;
+            cursor: pointer;
+            transition: background 0.15s;
+        }
+        .user-chip:hover { background: rgba(255,255,255,0.06); }
+        .user-chip-avatar {
+            width: 38px; height: 38px;
+            border-radius: 50%;
+            object-fit: cover;
+            background: var(--bg4);
+        }
+        .user-chip-name { font-weight: 600; font-size: 0.9rem; flex: 1; }
+        .user-chip-handle { color: var(--text2); font-size: 0.78rem; }
+        .user-chip-dots { color: var(--text2); font-size: 1.1rem; }
+
+        /* ===== MAIN FEED ===== */
+        .main-feed {
+            flex: 1;
+            max-width: 600px;
+            border-right: 1px solid var(--border);
+            min-height: 100vh;
+        }
+        .feed-header {
+            position: sticky;
+            top: 0;
+            background: rgba(15,15,15,0.85);
+            backdrop-filter: blur(12px);
+            border-bottom: 1px solid var(--border);
+            z-index: 10;
+        }
+        .feed-header-title {
+            padding: 16px 20px;
+            font-size: 1.1rem;
+            font-weight: 800;
+        }
+        .feed-tabs {
+            display: flex;
+        }
+        .feed-tab {
+            flex: 1;
+            text-align: center;
+            padding: 14px;
+            font-size: 0.9rem;
+            font-weight: 500;
+            color: var(--text2);
+            cursor: pointer;
+            border-bottom: 3px solid transparent;
+            transition: all 0.15s;
+            background: none;
+            border-top: none;
+            border-left: none;
+            border-right: none;
+            color: var(--text2);
+            font-family: 'Inter', sans-serif;
+        }
+        .feed-tab:hover { background: rgba(255,255,255,0.04); color: var(--text); }
+        .feed-tab.active { color: var(--text); font-weight: 700; border-bottom-color: var(--accent); }
+
+        /* ===== POST COMPOSER ===== */
+        .composer {
+            padding: 12px 16px;
+            border-bottom: 1px solid var(--border);
+            display: flex;
+            gap: 12px;
+        }
+        .composer-avatar {
+            width: 42px; height: 42px;
+            border-radius: 50%;
+            object-fit: cover;
+            background: var(--bg4);
+            flex-shrink: 0;
+        }
+        .composer-right { flex: 1; }
+        .composer-textarea {
+            width: 100%;
+            background: none;
+            border: none;
+            color: var(--text);
+            font-size: 1.1rem;
+            font-family: 'Inter', sans-serif;
+            resize: none;
+            min-height: 60px;
+            outline: none;
+            padding: 8px 0;
+        }
+        .composer-textarea::placeholder { color: var(--text2); }
+        .composer-divider { height: 1px; background: var(--border); margin: 8px 0; }
+        .composer-bottom {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+        .composer-tools { display: flex; gap: 4px; }
+        .composer-tool-btn {
+            width: 42px; height: 42px;
+            border-radius: 50%;
+            border: 1px solid var(--border);
+            background: var(--bg3);
+            color: var(--text);
+            font-size: 0; /* hide emoji fallback */
+            cursor: pointer;
+            display: flex; align-items: center; justify-content: center;
+            transition: all 0.2s;
+        }
+        .composer-tool-btn svg { width: 20px; height: 20px; }
+        .composer-tool-btn:hover { background: var(--bg4); border-color: var(--text2); color: var(--text); transform: scale(1.08); }
+        .composer-right-tools { display: flex; align-items: center; gap: 10px; }
+        .char-counter { color: var(--text2); font-size: 0.8rem; }
+        .char-counter.warn { color: #ffd700; }
+        .char-counter.danger { color: var(--danger); }
+        .post-btn {
+            background: var(--accent);
+            color: #fff;
+            border: none;
+            border-radius: 50px;
+            padding: 8px 20px;
+            font-size: 0.9rem;
+            font-weight: 700;
+            cursor: pointer;
+            font-family: 'Inter', sans-serif;
+            transition: background 0.15s;
+        }
+        .post-btn:hover { background: #1a8cd8; }
+        .post-btn:disabled { background: #1d4a6e; color: #71767b; cursor: not-allowed; }
+
+        /* ===== POST CARD ===== */
+        .post-card {
+            padding: 14px 16px;
+            border-bottom: 1px solid var(--border);
+            display: flex;
+            gap: 12px;
+            cursor: pointer;
+            transition: background 0.1s;
+        }
+        .post-card:hover { background: rgba(255,255,255,0.02); }
+        .post-avatar {
+            width: 42px; height: 42px;
+            border-radius: 50%;
+            object-fit: cover;
+            background: var(--bg4);
+            flex-shrink: 0;
+            cursor: pointer;
+        }
+        .post-right { flex: 1; min-width: 0; }
+        .post-header {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            margin-bottom: 4px;
+            flex-wrap: wrap;
+        }
+        .post-name {
+            font-weight: 700;
+            font-size: 0.95rem;
+            cursor: pointer;
+        }
+        .post-name:hover { text-decoration: underline; }
+        .post-handle {
+            color: var(--text2);
+            font-size: 0.88rem;
+        }
+        .post-dot { color: var(--text2); font-size: 0.7rem; }
+        .post-time { color: var(--text2); font-size: 0.85rem; }
+        .post-more {
+            margin-left: auto;
+            width: 32px; height: 32px;
+            border-radius: 50%;
+            border: none;
+            background: none;
+            color: var(--text2);
+            font-size: 1.1rem;
+            cursor: pointer;
+            display: flex; align-items: center; justify-content: center;
+            transition: all 0.15s;
+        }
+        .post-more:hover { background: rgba(29,155,240,0.1); color: var(--accent); }
+        .post-text {
+            font-size: 0.97rem;
+            line-height: 1.6;
+            margin-bottom: 10px;
+            word-break: break-word;
+            white-space: pre-wrap;
+        }
+        .post-image {
+            width: 100%;
+            max-height: 400px;
+            object-fit: cover;
+            border-radius: 14px;
+            border: 1px solid var(--border);
+            margin-bottom: 10px;
+        }
+        .post-actions {
+            display: flex;
+            gap: 4px;
+            margin-top: 4px;
+        }
+        .action-btn {
+            display: flex;
+            align-items: center;
+            gap: 5px;
+            padding: 6px 10px;
+            border-radius: 50px;
+            border: none;
+            background: none;
+            color: var(--text2);
+            font-size: 0.82rem;
+            cursor: pointer;
+            font-family: 'Inter', sans-serif;
+            transition: all 0.15s;
+            min-width: 52px;
+        }
+        .action-btn:hover.like { color: var(--danger); background: rgba(244,33,46,0.08); }
+        .action-btn:hover.comment { color: var(--accent); background: rgba(29,155,240,0.08); }
+        .action-btn:hover.repost { color: var(--green); background: rgba(0,186,124,0.08); }
+        .action-btn:hover.views { color: var(--text); background: rgba(255,255,255,0.05); }
+        .action-btn.liked { color: var(--danger); }
+        .action-btn.liked:hover { background: rgba(244,33,46,0.08); }
+        .action-icon { font-size: 1rem; }
+
+        /* ===== RIGHT PANEL ===== */
+        .right-panel {
+            width: 340px;
+            min-width: 340px;
+            padding: 16px;
+        }
+        .search-box {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            background: var(--bg3);
+            border: 1px solid var(--border);
+            border-radius: 50px;
+            padding: 10px 16px;
+            margin-bottom: 16px;
+        }
+        .search-box-icon { color: var(--text2); }
+        .search-input {
+            flex: 1;
+            background: none;
+            border: none;
+            outline: none;
+            color: var(--text);
+            font-size: 0.95rem;
+            font-family: 'Inter', sans-serif;
+        }
+        .search-input::placeholder { color: var(--text2); }
+
+        .widget {
+            background: var(--bg2);
+            border: 1px solid var(--border);
+            border-radius: 16px;
+            padding: 16px;
+            margin-bottom: 16px;
+        }
+        .widget-title {
+            font-size: 1.1rem;
+            font-weight: 800;
+            margin-bottom: 14px;
+        }
+
+        .suggest-user {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 8px 0;
+            border-bottom: 1px solid var(--border);
+        }
+        .suggest-user:last-child { border-bottom: none; }
+        .suggest-avatar {
+            width: 40px; height: 40px;
+            border-radius: 50%;
+            background: var(--bg4);
+            object-fit: cover;
+            font-size: 1.3rem;
+            display: flex; align-items: center; justify-content: center;
+        }
+        .suggest-info { flex: 1; }
+        .suggest-name { font-weight: 700; font-size: 0.9rem; }
+        .suggest-handle { color: var(--text2); font-size: 0.8rem; }
+        .follow-btn {
+            background: var(--text);
+            color: var(--bg);
+            border: none;
+            border-radius: 50px;
+            padding: 6px 16px;
+            font-size: 0.83rem;
+            font-weight: 700;
+            cursor: pointer;
+            font-family: 'Inter', sans-serif;
+            transition: opacity 0.15s;
+        }
+        .follow-btn:hover { opacity: 0.85; }
+        .follow-btn.following {
+            background: none;
+            color: var(--text);
+            border: 1px solid var(--border);
+        }
+        .follow-btn.following:hover { border-color: var(--danger); color: var(--danger); background: rgba(244,33,46,0.08); }
+
+        /* ===== PROFILE VIEW ===== */
+        #profileView {
+            display: none;
+        }
+        .profile-banner {
+            height: 140px;
+            background: linear-gradient(135deg, #1d4a6e, #3b2060, #1a1a2e);
+            position: relative;
+            z-index: 0;
+        }
+        .profile-banner-edit {
+            position: absolute;
+            top: 10px; right: 10px;
+            background: rgba(0,0,0,0.5);
+            border: none;
+            border-radius: 50%;
+            width: 36px; height: 36px;
+            color: #fff;
+            cursor: pointer;
+            font-size: 1rem;
+            display: flex; align-items: center; justify-content: center;
+        }
+        .profile-header {
+            padding: 16px;
+            border-bottom: 1px solid var(--border);
+        }
+        .profile-avatar-row {
+            display: flex;
+            align-items: flex-end;
+            justify-content: space-between;
+            margin-top: -44px;
+            margin-bottom: 12px;
+            position: relative;
+            z-index: 1;
+        }
+        .profile-avatar {
+            width: 88px; height: 88px;
+            border-radius: 50%;
+            border: 4px solid var(--bg);
+            object-fit: cover;
+            background: var(--bg4);
+            font-size: 2.5rem;
+            display: flex; align-items: center; justify-content: center;
+        }
+        .profile-edit-btn {
+            background: none;
+            color: var(--text);
+            border: 1px solid var(--border);
+            border-radius: 50px;
+            padding: 8px 20px;
+            font-size: 0.9rem;
+            font-weight: 700;
+            cursor: pointer;
+            font-family: 'Inter', sans-serif;
+            transition: background 0.15s;
+        }
+        .profile-edit-btn:hover { background: rgba(255,255,255,0.06); }
+        .profile-name { font-size: 1.3rem; font-weight: 800; }
+        .profile-handle { color: var(--text2); font-size: 0.9rem; margin-bottom: 10px; }
+        .profile-bio { font-size: 0.95rem; margin-bottom: 10px; line-height: 1.5; }
+        .profile-meta { display: flex; gap: 16px; color: var(--text2); font-size: 0.85rem; margin-bottom: 10px; }
+        .profile-stats { display: flex; gap: 20px; font-size: 0.9rem; }
+        .profile-stats span:hover .profile-stat-label { color: var(--text); }
+        .profile-stats span:hover .profile-stat-val { text-decoration: underline; }
+        .profile-stat-val { font-weight: 700; }
+        .profile-stat-label { color: var(--text2); }
+
+        .profile-tabs {
+            display: flex;
+            border-bottom: 1px solid var(--border);
+        }
+        .profile-tab {
+            flex: 1;
+            text-align: center;
+            padding: 16px;
+            font-size: 0.9rem;
+            font-weight: 500;
+            color: var(--text2);
+            cursor: pointer;
+            border-bottom: 3px solid transparent;
+            background: none;
+            border-top: none;
+            border-left: none;
+            border-right: none;
+            font-family: 'Inter', sans-serif;
+            transition: all 0.15s;
+        }
+        .profile-tab:hover { background: rgba(255,255,255,0.04); color: var(--text); }
+        .profile-tab.active { color: var(--text); font-weight: 700; border-bottom-color: var(--accent); }
+
+        /* ===== MODAL ===== */
+        .modal-overlay {
+            display: none;
+            position: fixed;
+            inset: 0;
+            background: rgba(0,0,0,0.7);
+            z-index: 1000;
+            align-items: center;
+            justify-content: center;
+        }
+        .modal-overlay.open { display: flex; }
+        .modal {
+            background: var(--bg);
+            border: 1px solid var(--border);
+            border-radius: 20px;
+            width: 90%;
+            max-width: 540px;
+            max-height: 85vh;
+            overflow-y: auto;
+            animation: modal-in 0.2s ease;
+        }
+        @keyframes modal-in {
+            from { transform: scale(0.95); opacity: 0; }
+            to { transform: scale(1); opacity: 1; }
+        }
+        .modal-header {
+            display: flex;
+            align-items: center;
+            gap: 16px;
+            padding: 14px 16px;
+            border-bottom: 1px solid var(--border);
+            position: sticky;
+            top: 0;
+            background: var(--bg);
+            z-index: 1;
+        }
+        .modal-close {
+            width: 34px; height: 34px;
+            border-radius: 50%;
+            border: none;
+            background: none;
+            color: var(--text);
+            font-size: 1.2rem;
+            cursor: pointer;
+            display: flex; align-items: center; justify-content: center;
+            transition: background 0.15s;
+        }
+        .modal-close:hover { background: rgba(255,255,255,0.08); }
+        .modal-title { font-size: 1.05rem; font-weight: 800; }
+        .modal-body { padding: 16px; }
+
+        /* ===== EDIT PROFILE MODAL ===== */
+        .edit-field { margin-bottom: 16px; }
+        .edit-label { font-size: 0.8rem; color: var(--text2); margin-bottom: 6px; font-weight: 500; }
+        .edit-input, .edit-textarea {
+            width: 100%;
+            background: none;
+            border: 1px solid var(--border);
+            border-radius: 6px;
+            color: var(--text);
+            font-size: 0.95rem;
+            font-family: 'Inter', sans-serif;
+            padding: 10px 12px;
+            outline: none;
+            transition: border-color 0.15s;
+        }
+        .edit-input:focus, .edit-textarea:focus { border-color: var(--accent); }
+        .edit-textarea { resize: vertical; min-height: 80px; }
+        .edit-save-btn {
+            background: var(--text);
+            color: var(--bg);
+            border: none;
+            border-radius: 50px;
+            padding: 10px 24px;
+            font-size: 0.95rem;
+            font-weight: 800;
+            cursor: pointer;
+            font-family: 'Inter', sans-serif;
+        }
+        .edit-save-btn:hover { opacity: 0.85; }
+
+        /* ===== POST DETAIL MODAL ===== */
+        .comment-input-row {
+            display: flex;
+            gap: 12px;
+            padding: 12px 0;
+            border-top: 1px solid var(--border);
+        }
+        .comment-input {
+            flex: 1;
+            background: none;
+            border: none;
+            outline: none;
+            color: var(--text);
+            font-size: 0.95rem;
+            font-family: 'Inter', sans-serif;
+            resize: none;
+            min-height: 48px;
+        }
+        .comment-input::placeholder { color: var(--text2); }
+        .comment-send-btn {
+            background: var(--accent);
+            color: #fff;
+            border: none;
+            border-radius: 50px;
+            padding: 8px 18px;
+            font-size: 0.85rem;
+            font-weight: 700;
+            cursor: pointer;
+            font-family: 'Inter', sans-serif;
+            align-self: flex-end;
+        }
+        .comment-card {
+            display: flex;
+            gap: 12px;
+            padding: 12px 0;
+            border-bottom: 1px solid var(--border);
+        }
+        .comment-avatar {
+            width: 38px; height: 38px;
+            border-radius: 50%;
+            background: var(--bg4);
+            object-fit: cover;
+            font-size: 1.2rem;
+            display: flex; align-items: center; justify-content: center;
+        }
+        .comment-body { flex: 1; }
+        .comment-name { font-weight: 700; font-size: 0.88rem; }
+        .comment-handle { color: var(--text2); font-size: 0.8rem; }
+        .comment-text { font-size: 0.92rem; margin-top: 4px; line-height: 1.5; }
+
+        /* ===== TOAST ===== */
+        .toast {
+            position: fixed;
+            bottom: 24px;
+            left: 50%;
+            transform: translateX(-50%) translateY(80px);
+            background: var(--text);
+            color: var(--bg);
+            padding: 12px 24px;
+            border-radius: 50px;
+            font-size: 0.9rem;
+            font-weight: 600;
+            z-index: 9999;
+            transition: transform 0.3s ease;
+            pointer-events: none;
+        }
+        .toast.show { transform: translateX(-50%) translateY(0); }
+
+        /* ===== LOADING ===== */
+        .feed-loading {
+            text-align: center;
+            padding: 40px;
+            color: var(--text2);
+        }
+        .spinner-small {
+            width: 28px; height: 28px;
+            border: 3px solid var(--bg4);
+            border-top-color: var(--accent);
+            border-radius: 50%;
+            animation: spin 0.8s linear infinite;
+            margin: 0 auto 12px;
+        }
+        @keyframes spin { to { transform: rotate(360deg); } }
+
+        /* ===== EMPTY STATE ===== */
+        .empty-state {
+            text-align: center;
+            padding: 60px 20px;
+            color: var(--text2);
+        }
+        .empty-state-icon { font-size: 3rem; margin-bottom: 12px; }
+        .empty-state-title { font-size: 1.2rem; font-weight: 800; color: var(--text); margin-bottom: 8px; }
+        .empty-state-sub { font-size: 0.9rem; line-height: 1.5; }
+
+        /* ===== AUTH WALL ===== */
+        .auth-wall {
+            padding: 60px 20px;
+            text-align: center;
+        }
+        .auth-wall-title { font-size: 1.8rem; font-weight: 800; margin-bottom: 10px; }
+        .auth-wall-sub { color: var(--text2); margin-bottom: 24px; font-size: 0.95rem; }
+        .google-btn {
+            display: inline-flex;
+            align-items: center;
+            gap: 10px;
+            background: var(--text);
+            color: var(--bg);
+            border: none;
+            border-radius: 50px;
+            padding: 12px 28px;
+            font-size: 1rem;
+            font-weight: 700;
+            cursor: pointer;
+            font-family: 'Inter', sans-serif;
+            transition: opacity 0.15s;
+        }
+        .google-btn:hover { opacity: 0.85; }
+
+        /* ===== USERNAME SETUP ===== */
+        .username-setup {
+            display: none;
+            position: fixed;
+            inset: 0;
+            background: var(--bg);
+            z-index: 5000;
+            align-items: center;
+            justify-content: center;
+        }
+        .username-setup.open { display: flex; }
+        .username-setup-box {
+            background: var(--bg2);
+            border: 1px solid var(--border);
+            border-radius: 20px;
+            padding: 32px;
+            width: 90%;
+            max-width: 400px;
+            text-align: center;
+        }
+        .username-setup-title { font-size: 1.4rem; font-weight: 800; margin-bottom: 8px; }
+        .username-setup-sub { color: var(--text2); font-size: 0.9rem; margin-bottom: 24px; }
+        .username-setup-input {
+            width: 100%;
+            background: var(--bg3);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            color: var(--text);
+            font-size: 1rem;
+            font-family: 'Inter', sans-serif;
+            padding: 12px 16px;
+            outline: none;
+            margin-bottom: 12px;
+            transition: border-color 0.15s;
+        }
+        .username-setup-input:focus { border-color: var(--accent); }
+        .username-error { color: var(--danger); font-size: 0.85rem; margin-bottom: 12px; min-height: 20px; }
+        .username-submit {
+            width: 100%;
+            background: var(--accent);
+            color: #fff;
+            border: none;
+            border-radius: 50px;
+            padding: 12px;
+            font-size: 1rem;
+            font-weight: 700;
+            cursor: pointer;
+            font-family: 'Inter', sans-serif;
+        }
+        .username-submit:disabled { opacity: 0.5; cursor: not-allowed; }
+
+        /* ===== RESPONSIVE ===== */
+        @media (max-width: 1100px) {
+            .right-panel { display: none; }
+        }
+        /* Мобильная кнопка «Назад» — показывается только на телефоне */
+        .mobile-back-bar {
+            display: none;
+        }
+        @media (max-width: 680px) {
+            .mobile-back-bar {
+                display: flex;
+                align-items: center;
+                gap: 10px;
+                padding: 10px 16px;
+                background: rgba(15,15,15,0.95);
+                border-bottom: 1px solid var(--border);
+                position: sticky;
+                top: 0;
+                z-index: 100;
+                backdrop-filter: blur(12px);
+            }
+            .mobile-back-btn {
+                display: flex;
+                align-items: center;
+                gap: 6px;
+                background: var(--bg3);
+                border: 1px solid var(--border);
+                color: var(--text);
+                border-radius: 20px;
+                padding: 7px 16px;
+                font-size: 0.88rem;
+                font-weight: 600;
+                cursor: pointer;
+                text-decoration: none;
+                transition: all 0.2s;
+                font-family: 'Inter', sans-serif;
+            }
+            .mobile-back-btn:hover { background: var(--bg4); }
+            .mobile-back-title {
+                font-size: 1rem;
+                font-weight: 800;
+                color: var(--text);
+            }
+
+            .sidebar { width: 60px; min-width: 60px; padding: 10px 6px; }
+            .logo-text, .logo-back, .nav-item span:not(.nav-icon), .user-chip-info { display: none; }
+            .nav-item { justify-content: center; padding: 13px; }
+            .user-chip { padding: 8px; justify-content: center; }
+            .main-feed { max-width: 100%; border-right: none; }
+            .logo-row { justify-content: center; padding: 10px 0 20px; }
+            /* Отступ под sticky back-bar */
+            .layout { padding-top: 0; }
+        }
+    </style>
+</head>
+<body>
+
+<!-- USERNAME SETUP OVERLAY -->
+<div class="username-setup" id="usernameSetup">
+    <div class="username-setup-box">
+        <div style="font-size:2rem;margin-bottom:12px;">🤡</div>
+        <div class="username-setup-title">Придумай юзернейм</div>
+        <div class="username-setup-sub">Будет отображаться как @username. Изменить можно будет позже.</div>
+        <input type="text" class="username-setup-input" id="usernameInput" placeholder="только_буквы_цифры_подчёркивание" maxlength="20">
+        <div class="username-error" id="usernameError"></div>
+        <button class="username-submit" id="usernameSubmit" onclick="submitUsername()">Готово</button>
+    </div>
+</div>
+
+<!-- TOAST -->
+<div class="toast" id="toast"></div>
+
+<!-- FOLLOW LIST MODAL -->
+<div class="modal-overlay" id="followListModal">
+    <div class="modal">
+        <div class="modal-header">
+            <button class="modal-close" onclick="closeModal('followListModal')">✕</button>
+            <div class="modal-title" id="followListTitle">Подписки</div>
+        </div>
+        <div class="modal-body" id="followListBody" style="padding:0;"></div>
+    </div>
+</div>
+
+<!-- EDIT PROFILE MODAL -->
+<div class="modal-overlay" id="editProfileModal">
+    <div class="modal">
+        <div class="modal-header">
+            <button class="modal-close" onclick="closeModal('editProfileModal')">✕</button>
+            <div class="modal-title">Редактировать профиль</div>
+            <div style="margin-left:auto;">
+                <button class="edit-save-btn" onclick="saveProfile()">Сохранить</button>
+            </div>
+        </div>
+        <div class="modal-body">
+            <div class="edit-field">
+                <div class="edit-label">Имя</div>
+                <input type="text" class="edit-input" id="editName" maxlength="50" placeholder="Твоё имя">
+            </div>
+            <div class="edit-field">
+                <div class="edit-label">Bio</div>
+                <textarea class="edit-textarea" id="editBio" maxlength="160" placeholder="Расскажи о себе..."></textarea>
+            </div>
+            <div class="edit-field">
+                <div class="edit-label">Аватарка (URL)</div>
+                <input type="text" class="edit-input" id="editAvatar" placeholder="https://...">
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- POST DETAIL MODAL -->
+<div class="modal-overlay" id="postDetailModal">
+    <div class="modal">
+        <div class="modal-header">
+            <button class="modal-close" onclick="closeModal('postDetailModal')">✕</button>
+            <div class="modal-title">Пост</div>
+        </div>
+        <div class="modal-body" id="postDetailBody">
+        </div>
+    </div>
+</div>
+
+<!-- MAIN LAYOUT -->
+<!-- МОБИЛЬНАЯ КНОПКА НАЗАД (только на телефоне) -->
+<div class="mobile-back-bar">
+    <a href="index.html" class="mobile-back-btn">← Назад</a>
+    <span class="mobile-back-title">🌐 Соцсеть</span>
+</div>
+
+<div class="layout">
+    <!-- SIDEBAR -->
+    <aside class="sidebar">
+        <div class="logo-row">
+            <span class="logo-emoji">🤡</span>
+            <span class="logo-text">Доска Позора</span>
+            <a href="index.html" class="logo-back">← Назад</a>
+        </div>
+
+        <button class="nav-item active" id="navFeed" onclick="showFeed()">
+            <span class="nav-icon">🏠</span>
+            <span>Лента</span>
+        </button>
+        <button class="nav-item" id="navChat" onclick="showChat()">
+            <span class="nav-icon">💬</span>
+            <span>Чат</span>
+        </button>
+        <button class="nav-item" id="navSearch" onclick="showSearch()">
+            <span class="nav-icon">🔍</span>
+            <span>Поиск</span>
+        </button>
+        <button class="nav-item" id="navProfile" onclick="showMyProfile()">
+            <span class="nav-icon">👤</span>
+            <span>Профиль</span>
+        </button>
+
+        <div class="nav-divider"></div>
+
+        <div class="user-chip" id="sidebarUserChip" onclick="showMyProfile()">
+            <img src="img/ico2.png" id="sidebarAvatar" class="user-chip-avatar" alt="av">
+            <div class="user-chip-info">
+                <div class="user-chip-name" id="sidebarName">Гость</div>
+                <div class="user-chip-handle" id="sidebarHandle">@гость</div>
+            </div>
+            <span class="user-chip-dots">···</span>
+        </div>
+    </aside>
+
+    <!-- MAIN FEED -->
+    <main class="main-feed" id="mainFeedArea">
+        <!-- FEED VIEW -->
+        <div id="feedView">
+            <div class="feed-header">
+                <div class="feed-header-title">Лента</div>
+                <div class="feed-tabs">
+                    <button class="feed-tab active" id="tabForYou" onclick="switchFeedTab('forYou')">Для вас</button>
+                    <button class="feed-tab" id="tabFollowing" onclick="switchFeedTab('following')">Подписки</button>
+                </div>
+            </div>
+
+            <div class="composer" id="composer">
+                <img src="img/ico2.png" id="composerAvatar" class="composer-avatar" alt="av">
+                <div class="composer-right">
+                    <textarea class="composer-textarea" id="postText" placeholder="Что нового?" maxlength="500" oninput="updateCharCounter()"></textarea>
+                    <!-- Photo preview -->
+                    <div id="photoPreviewRow" style="display:none;flex-wrap:wrap;gap:8px;margin:8px 0;"></div>
+                    <!-- Poll UI -->
+                    <div id="pollSection" style="display:none;border:1px solid var(--border);border-radius:12px;padding:12px;margin:8px 0;">
+                        <div style="font-weight:700;font-size:0.85rem;margin-bottom:10px;color:var(--text2);">ОПРОС</div>
+                        <input type="text" class="comment-input" id="pollOpt1" placeholder="Вариант 1" style="border:1px solid var(--border);border-radius:8px;padding:8px 12px;width:100%;margin-bottom:6px;background:var(--bg3);color:var(--text);">
+                        <input type="text" class="comment-input" id="pollOpt2" placeholder="Вариант 2" style="border:1px solid var(--border);border-radius:8px;padding:8px 12px;width:100%;margin-bottom:6px;background:var(--bg3);color:var(--text);">
+                        <input type="text" class="comment-input" id="pollOpt3" placeholder="Вариант 3 (необяз.)" style="border:1px solid var(--border);border-radius:8px;padding:8px 12px;width:100%;margin-bottom:6px;background:var(--bg3);color:var(--text);">
+                        <input type="text" class="comment-input" id="pollOpt4" placeholder="Вариант 4 (необяз.)" style="border:1px solid var(--border);border-radius:8px;padding:8px 12px;width:100%;background:var(--bg3);color:var(--text);">
+                    </div>
+                    <div class="composer-divider"></div>
+                    <div class="composer-bottom">
+                        <div class="composer-tools">
+                            <!-- Photo upload -->
+                            <input type="file" id="photoFileInput" accept="image/*" multiple style="display:none;" onchange="handlePhotoSelect(event)">
+                            <button class="composer-tool-btn" title="Фото" onclick="document.getElementById('photoFileInput').click()">
+                                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                    <rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/>
+                                    <polyline points="21 15 16 10 5 21"/>
+                                </svg>
+                            </button>
+                            <!-- Poll -->
+                            <button class="composer-tool-btn" title="Опрос" id="pollToggleBtn" onclick="togglePoll()">
+                                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                    <line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/>
+                                    <line x1="6" y1="20" x2="6" y2="14"/>
+                                </svg>
+                            </button>
+                        </div>
+                        <div class="composer-right-tools">
+                            <span class="char-counter" id="charCounter">500</span>
+                            <button class="post-btn" id="postBtn" onclick="publishPost()">Опубликовать</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- AUTH WALL (shown if not logged in) -->
+            <div class="auth-wall" id="authWall" style="display:none;">
+                <div class="auth-wall-title">Войди, чтобы писать посты</div>
+                <div class="auth-wall-sub">Авторизуйся через Google и стань частью позора</div>
+                <button class="google-btn" onclick="signIn()">
+                    <svg width="18" height="18" viewBox="0 0 18 18">
+                        <path fill="#4285F4" d="M17.64 9.2c0-.637-.057-1.251-.164-1.84H9v3.481h4.844c-.209 1.125-.843 2.078-1.796 2.717v2.258h2.908c1.702-1.567 2.684-3.874 2.684-6.615z"/>
+                        <path fill="#34A853" d="M9 18c2.43 0 4.467-.806 5.956-2.184l-2.908-2.258c-.806.54-1.837.86-3.048.86-2.344 0-4.328-1.584-5.036-3.711H.957v2.332C2.438 15.983 5.482 18 9 18z"/>
+                        <path fill="#FBBC05" d="M3.964 10.707c-.18-.54-.282-1.117-.282-1.707s.102-1.167.282-1.707V4.961H.957C.347 6.175 0 7.55 0 9s.348 2.825.957 4.039l3.007-2.332z"/>
+                        <path fill="#EA4335" d="M9 3.58c1.321 0 2.508.454 3.44 1.345l2.582-2.58C13.463.891 11.426 0 9 0 5.482 0 2.438 2.017.957 4.958L3.964 7.29C4.672 5.163 6.656 3.58 9 3.58z"/>
+                    </svg>
+                    Войти через Google
+                </button>
+            </div>
+
+            <!-- POSTS -->
+            <div id="postsContainer">
+                <div class="feed-loading"><div class="spinner-small"></div>Загружаем посты...</div>
+            </div>
+        </div>
+
+        <!-- PROFILE VIEW -->
+        <div id="profileView" style="display:none;">
+            <div class="profile-banner" id="profileBanner">
+                <button class="profile-banner-edit" id="profileBannerEditBtn" style="display:none;" onclick="openModal('editProfileModal')">🖊</button>
+            </div>
+            <div class="profile-header">
+                <div class="profile-avatar-row">
+                    <div class="profile-avatar" id="profileAvatarEl">🤡</div>
+                    <div>
+                        <button class="profile-edit-btn" id="profileEditBtn" style="display:none;" onclick="openModal('editProfileModal')">Редактировать</button>
+                        <button class="follow-btn" id="profileFollowBtn" style="display:none;" onclick="toggleFollow()">Подписаться</button>
+                    </div>
+                </div>
+                <div class="profile-name" id="profileName">Имя</div>
+                <div class="profile-handle" id="profileHandle">@handle</div>
+                <div class="profile-bio" id="profileBio" style="display:none;"></div>
+                <div class="profile-meta">
+                    <span>📅 <span id="profileJoined">—</span></span>
+                </div>
+                <div class="profile-stats">
+                    <span style="cursor:pointer;" onclick="openFollowList('following')"><span class="profile-stat-val" id="profileFollowing">0</span> <span class="profile-stat-label">подписок</span></span>
+                    <span style="cursor:pointer;" onclick="openFollowList('followers')"><span class="profile-stat-val" id="profileFollowers">0</span> <span class="profile-stat-label">подписчиков</span></span>
+                </div>
+            </div>
+            <div class="profile-tabs">
+                <button class="profile-tab active" id="ptabPosts" onclick="switchProfileTab('posts')">Посты</button>
+                <button class="profile-tab" id="ptabWall" onclick="switchProfileTab('wall')">Стена</button>
+                <button class="profile-tab" id="ptabLikes" onclick="switchProfileTab('likes')">Лайки</button>
+            </div>
+            <div id="profilePostsContainer">
+                <div class="feed-loading"><div class="spinner-small"></div>Загружаем...</div>
+            </div>
+        </div>
+
+        <!-- CHAT VIEW -->
+        <div id="chatView" style="display:none;">
+            <div class="feed-header">
+                <div class="feed-header-title">💬 Общий чат</div>
+            </div>
+            <div id="socialChatMessages" style="
+                height: calc(100vh - 180px);
+                overflow-y: auto;
+                padding: 12px 16px;
+                display: flex;
+                flex-direction: column;
+                gap: 6px;
+            ">
+                <div style="text-align:center;color:var(--text2);padding:20px;font-size:0.85rem;">Загрузка сообщений...</div>
+            </div>
+            <div style="
+                border-top: 1px solid var(--border);
+                padding: 12px 16px;
+                display: flex;
+                gap: 10px;
+                align-items: flex-end;
+                background: rgba(15,15,15,0.9);
+                backdrop-filter: blur(12px);
+                position: sticky;
+                bottom: 0;
+            " id="socialChatInputArea">
+                <img src="img/ico2.png" id="socialChatAvatar" style="width:36px;height:36px;border-radius:50%;object-fit:cover;flex-shrink:0;">
+                <textarea id="socialChatInput" placeholder="Написать сообщение..." style="
+                    flex:1;
+                    background: var(--bg3);
+                    border: 1px solid var(--border);
+                    border-radius: 20px;
+                    color: var(--text);
+                    font-family: Inter, sans-serif;
+                    font-size: 0.92rem;
+                    padding: 10px 16px;
+                    resize: none;
+                    min-height: 42px;
+                    max-height: 120px;
+                    outline: none;
+                    line-height: 1.4;
+                    transition: border-color 0.15s;
+                " oninput="autoResizeSocialChat(this)" onkeydown="handleSocialChatKey(event)"></textarea>
+                <button onclick="sendSocialChatMessage()" style="
+                    background: var(--accent);
+                    color: #fff;
+                    border: none;
+                    border-radius: 50%;
+                    width: 42px;
+                    height: 42px;
+                    font-size: 1.1rem;
+                    cursor: pointer;
+                    display: flex;
+                    align-items: center;
+                    justify-content: center;
+                    flex-shrink: 0;
+                    transition: background 0.15s;
+                " title="Отправить">➤</button>
+            </div>
+        </div>
+
+        <!-- SEARCH VIEW -->
+        <div id="searchView" style="display:none;">
+            <div class="feed-header">
+                <div class="feed-header-title">Поиск</div>
+            </div>
+            <div style="padding:16px;">
+                <div class="search-box" style="background:var(--bg3);margin-bottom:0;">
+                    <span class="search-box-icon">🔍</span>
+                    <input type="text" class="search-input" id="searchQueryInput" placeholder="Поиск людей..." oninput="doSearch(this.value)">
+                </div>
+            </div>
+            <div id="searchResults">
+                <div class="empty-state">
+                    <div class="empty-state-icon">🔍</div>
+                    <div class="empty-state-title">Найди кого-нибудь</div>
+                    <div class="empty-state-sub">Вводи имя или @username</div>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <!-- RIGHT PANEL -->
+    <div class="right-panel">
+        <div class="search-box">
+            <span class="search-box-icon">🔍</span>
+            <input type="text" class="search-input" placeholder="Поиск..." oninput="doSearch(this.value)">
+        </div>
+        <div class="widget">
+            <div class="widget-title">Кого читать</div>
+            <div id="suggestedUsers">
+                <div class="feed-loading"><div class="spinner-small"></div></div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Firebase compat (те же версии что и на основном сайте) -->
+<script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-database-compat.js"></script>
+
+<script>
+// ===== FIREBASE INIT =====
+const firebaseConfig = {
+    apiKey: 'AIzaSyC-bSkpW3DiIo5aTx0bfI7nqnvU2EIl2c4',
+    authDomain: 'dima-chat-ae605.firebaseapp.com',
+    databaseURL: 'https://dima-chat-ae605-default-rtdb.europe-west1.firebasedatabase.app',
+    projectId: 'dima-chat-ae605',
+    storageBucket: 'dima-chat-ae605.firebasestorage.app',
+    messagingSenderId: '353476225291',
+    appId: '1:353476225291:web:b34851858e6565be22da0e',
+}
+
+firebase.initializeApp(firebaseConfig)
+const auth = firebase.auth()
+const db = firebase.database()
+const provider = new firebase.auth.GoogleAuthProvider()
+
+// ===== STATE =====
+let currentUser = null
+let currentUserData = null
+let viewingUid = null
+let currentFeedTab = 'forYou'
+const viewedPostsSet = new Set()  // track viewed posts this session
+let currentProfileTab = 'posts'
+let postsUnsubscribe = null
+
+// ===== AUTH =====
+auth.onAuthStateChanged(async user => {
+    if (user) {
+        currentUser = user
+        const snap = await db.ref(`social_users/${user.uid}`).once('value')
+        if (!snap.exists()) {
+            // New user — show username setup
+            document.getElementById('usernameSetup').classList.add('open')
+        } else {
+            currentUserData = snap.val()
+            onUserReady()
+        }
+    } else {
+        currentUser = null
+        currentUserData = null
+        onUserReady()
+    }
+})
+
+function onUserReady() {
+    updateSidebar()
+    updateComposer()
+    loadFeed()
+    loadSuggestedUsers()
+}
+
+function updateSidebar() {
+    if (currentUserData) {
+        document.getElementById('sidebarName').textContent = currentUserData.name || currentUserData.username
+        document.getElementById('sidebarHandle').textContent = '@' + currentUserData.username
+        if (currentUserData.avatar) document.getElementById('sidebarAvatar').src = currentUserData.avatar
+    } else {
+        document.getElementById('sidebarName').textContent = 'Гость'
+        document.getElementById('sidebarHandle').textContent = '@гость'
+    }
+}
+
+function updateComposer() {
+    if (currentUser && currentUserData) {
+        document.getElementById('composer').style.display = 'flex'
+        document.getElementById('authWall').style.display = 'none'
+        if (currentUserData.avatar) document.getElementById('composerAvatar').src = currentUserData.avatar
+    } else {
+        document.getElementById('composer').style.display = 'none'
+        document.getElementById('authWall').style.display = 'block'
+    }
+}
+
+function signIn() {
+    auth.signInWithPopup(provider).catch(e => showToast('Ошибка входа: ' + e.message))
+}
+
+// ===== USERNAME SETUP =====
+async function submitUsername() {
+    const input = document.getElementById('usernameInput')
+    const error = document.getElementById('usernameError')
+    const btn = document.getElementById('usernameSubmit')
+    const val = input.value.trim().toLowerCase()
+
+    if (!/^[a-z0-9_]{3,20}$/.test(val)) {
+        error.textContent = 'От 3 до 20 символов, только a-z, 0-9, _'
+        return
+    }
+    btn.disabled = true
+    error.textContent = ''
+
+    // Check uniqueness
+    const check = await db.ref('social_usernames/' + val).once('value')
+    if (check.exists()) {
+        error.textContent = 'Этот юзернейм уже занят'
+        btn.disabled = false
+        return
+    }
+
+    const userData = {
+        username: val,
+        name: currentUser.displayName || val,
+        avatar: currentUser.photoURL || '',
+        bio: '',
+        createdAt: Date.now(),
+        followers: 0,
+        following: 0,
+    }
+
+    await db.ref(`social_users/${currentUser.uid}`).set(userData)
+    await db.ref(`social_usernames/${val}`).set(currentUser.uid)
+
+    currentUserData = userData
+    document.getElementById('usernameSetup').classList.remove('open')
+    onUserReady()
+}
+
+// ===== NAVIGATION =====
+function showFeed() {
+    setNavActive('navFeed')
+    document.getElementById('feedView').style.display = 'block'
+    document.getElementById('profileView').style.display = 'none'
+    document.getElementById('searchView').style.display = 'none'
+    document.getElementById('chatView').style.display = 'none'
+    loadFeed()
+}
+
+function showSearch() {
+    setNavActive('navSearch')
+    document.getElementById('feedView').style.display = 'none'
+    document.getElementById('profileView').style.display = 'none'
+    document.getElementById('chatView').style.display = 'none'
+    document.getElementById('searchView').style.display = 'block'
+}
+
+function showMyProfile() {
+    if (!currentUser) { showToast('Войдите, чтобы увидеть профиль'); return; }
+    showProfile(currentUser.uid)
+    setNavActive('navProfile')
+}
+
+function showProfile(uid) {
+    setNavActive(uid === currentUser?.uid ? 'navProfile' : null)
+    document.getElementById('feedView').style.display = 'none'
+    document.getElementById('searchView').style.display = 'none'
+    document.getElementById('chatView').style.display = 'none'
+    document.getElementById('profileView').style.display = 'block'
+    viewingUid = uid
+    loadProfile(uid)
+    switchProfileTab('posts')
+}
+
+function setNavActive(id) {
+    document.querySelectorAll('.nav-item').forEach(b => b.classList.remove('active'))
+    if (id) document.getElementById(id)?.classList.add('active')
+}
+
+// ===== FEED TABS =====
+function switchFeedTab(tab) {
+    currentFeedTab = tab
+    document.getElementById('tabForYou').classList.toggle('active', tab === 'forYou')
+    document.getElementById('tabFollowing').classList.toggle('active', tab === 'following')
+    loadFeed()
+}
+
+// ===== FEED =====
+let feedRef = null  // store ref to properly detach listener
+
+function loadFeed() {
+    const container = document.getElementById('postsContainer')
+    container.innerHTML = '<div class="feed-loading"><div class="spinner-small"></div>Загружаем посты...</div>'
+
+    // Properly detach previous listener using the same ref object
+    if (feedRef) {
+        feedRef.off('value')
+        feedRef = null
+    }
+
+    // No limitToLast, no orderByChild — read all posts, sort client-side
+    feedRef = db.ref('social_posts')
+
+    feedRef.on('value', async snap => {
+        const allPosts = []
+        snap.forEach(child => {
+            const val = child.val()
+            if (val) allPosts.push({ id: child.key, ...val })
+        })
+        allPosts.sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0))
+
+        console.log('[Feed] постов из Firebase:', allPosts.length)
+
+        if (currentFeedTab === 'following' && currentUser) {
+            const followSnap = await db.ref(`social_follows/${currentUser.uid}`).once('value')
+            const followingUids = {}
+            followSnap.forEach(c => { followingUids[c.key] = true })
+            const filtered = allPosts.filter(p => followingUids[p.authorUid] || p.authorUid === currentUser.uid)
+            renderPosts(filtered, container)
+        } else {
+            renderPosts(allPosts, container)
+        }
+    }, err => {
+        console.error('[Feed] Ошибка Firebase:', err.code, err.message)
+        container.innerHTML = `<div class="empty-state"><div class="empty-state-icon">❌</div><div class="empty-state-title">Ошибка загрузки: ${err.message}</div></div>`
+    })
+}
+
+function renderPosts(posts, container) {
+    if (!posts.length) {
+        container.innerHTML = `<div class="empty-state">
+            <div class="empty-state-icon">📭</div>
+            <div class="empty-state-title">Пока тихо</div>
+            <div class="empty-state-sub">Будь первым кто напишет!</div>
+        </div>`
+        return
+    }
+    container.innerHTML = posts.map(p => buildPostCard(p)).join('')
+}
+
+function buildPostCard(post) {
+    const isLiked = currentUser && post.likedBy && post.likedBy[currentUser.uid]
+    const timeStr = formatTime(post.createdAt)
+    const avatarHtml = post.authorAvatar
+        ? `<img src="${post.authorAvatar}" class="post-avatar" onclick="showProfile('${post.authorUid}')" onerror="this.style.display='none'">`
+        : `<div class="post-avatar" onclick="showProfile('${post.authorUid}')" style="display:flex;align-items:center;justify-content:center;font-size:1.3rem;">🤡</div>`
+
+    // Photos
+    let photosHtml = ''
+    if (post.photos && post.photos.length) {
+        const cols = post.photos.length === 1 ? '1fr' : (post.photos.length === 2 ? '1fr 1fr' : (post.photos.length === 3 ? '1fr 1fr 1fr' : '1fr 1fr'))
+        photosHtml = `<div style="display:grid;grid-template-columns:${cols};gap:4px;border-radius:12px;overflow:hidden;margin-top:8px;">`
+        post.photos.forEach(src => {
+            photosHtml += `<img src="${src}" style="width:100%;aspect-ratio:${post.photos.length===1?'16/9':'1'};object-fit:cover;" onclick="event.stopPropagation();">`
+        })
+        photosHtml += '</div>'
+    }
+
+    // Poll
+    let pollHtml = ''
+    if (post.poll && post.poll.options) {
+        const totalVotes = post.poll.options.reduce((s, _, i) => s + (post.poll.votes?.[i] || 0), 0)
+        const hasVoted = currentUser && post.poll.userVotes && post.poll.userVotes[currentUser.uid] !== undefined
+        pollHtml = `<div style="border:1px solid var(--border);border-radius:12px;padding:10px;margin-top:8px;">` +
+            post.poll.options.map((opt, i) => {
+                const count = post.poll.votes?.[i] || 0
+                const pct = totalVotes ? Math.round(count/totalVotes*100) : 0
+                return hasVoted
+                    ? `<div style="margin-bottom:6px;"><div style="display:flex;justify-content:space-between;font-size:0.85rem;margin-bottom:3px;">${esc(opt)}<span>${pct}%</span></div><div style="height:6px;background:var(--bg4);border-radius:3px;"><div style="width:${pct}%;height:100%;background:var(--accent);border-radius:3px;"></div></div></div>`
+                    : `<button onclick="event.stopPropagation();votePoll('${post.id}',${i})" style="width:100%;padding:8px 14px;margin-bottom:6px;background:var(--bg3);border:1px solid var(--border);color:var(--text);border-radius:50px;cursor:pointer;font-family:Inter,sans-serif;font-size:0.9rem;text-align:left;">${esc(opt)}</button>`
+            }).join('') +
+            `<div style="font-size:0.78rem;color:var(--text2);margin-top:4px;">${totalVotes} голосов</div></div>`
+    }
+
+    return `<div class="post-card" onclick="openPost('${post.id}')">
+        ${avatarHtml}
+        <div class="post-right">
+            <div class="post-header">
+                <span class="post-name" onclick="event.stopPropagation();showProfile('${post.authorUid}')">${esc(post.authorName)}</span>
+                <span class="post-handle">@${esc(post.authorUsername)}</span>
+                <span class="post-dot">·</span>
+                <span class="post-time">${timeStr}</span>
+                <button class="post-more" onclick="event.stopPropagation()">···</button>
+            </div>
+            <div class="post-text">${esc(post.text)}</div>
+            ${photosHtml}
+            ${pollHtml}
+            <div class="post-actions">
+                <button class="action-btn like ${isLiked ? 'liked' : ''}" onclick="event.stopPropagation();toggleLike('${post.id}')">
+                    <span class="action-icon">${isLiked ? '❤️' : '🤍'}</span>
+                    <span>${post.likes || 0}</span>
+                </button>
+                <button class="action-btn comment" onclick="event.stopPropagation();openPost('${post.id}')">
+                    <span class="action-icon">💬</span>
+                    <span>${post.commentCount || 0}</span>
+                </button>
+                <button class="action-btn views">
+                    <span class="action-icon">👁</span>
+                    <span>${post.views || 0}</span>
+                </button>
+            </div>
+        </div>
+    </div>`
+}
+
+// ===== PUBLISH POST =====
+function updateCharCounter() {
+    const ta = document.getElementById('postText')
+    const remaining = 500 - ta.value.length
+    const el = document.getElementById('charCounter')
+    el.textContent = remaining
+    el.className = 'char-counter' + (remaining < 50 ? (remaining < 20 ? ' danger' : ' warn') : '')
+    document.getElementById('postBtn').disabled = ta.value.trim().length === 0
+}
+
+// ===== PHOTO UPLOAD =====
+let selectedPhotos = [] // base64 array
+
+function handlePhotoSelect(event) {
+    const files = Array.from(event.target.files)
+    if (!files.length) return
+    const remaining = 4 - selectedPhotos.length
+    if (remaining <= 0) { showToast('Максимум 4 фото'); return; }
+    const toLoad = files.slice(0, remaining)
+    toLoad.forEach(file => {
+        const reader = new FileReader()
+        reader.onload = e => {
+            selectedPhotos.push(e.target.result)
+            renderPhotoPreviews()
+        }
+        reader.readAsDataURL(file)
+    })
+    event.target.value = ''
+}
+
+function renderPhotoPreviews() {
+    const row = document.getElementById('photoPreviewRow')
+    if (!selectedPhotos.length) { row.style.display = 'none'; row.innerHTML = ''; return; }
+    row.style.display = 'flex'
+    row.innerHTML = selectedPhotos.map((src, i) => `
+        <div style="position:relative;display:inline-block;">
+            <img src="${src}" style="width:80px;height:80px;object-fit:cover;border-radius:10px;border:1px solid var(--border);">
+            <button onclick="removePhoto(${i})" style="position:absolute;top:-6px;right:-6px;background:var(--bg);border:1px solid var(--border);border-radius:50%;width:22px;height:22px;font-size:12px;cursor:pointer;color:var(--text);display:flex;align-items:center;justify-content:center;">✕</button>
+        </div>
+    `).join('')
+}
+
+function removePhoto(idx) {
+    selectedPhotos.splice(idx, 1)
+    renderPhotoPreviews()
+}
+
+// ===== POLL TOGGLE =====
+let pollActive = false
+function togglePoll() {
+    pollActive = !pollActive
+    const section = document.getElementById('pollSection')
+    const btn = document.getElementById('pollToggleBtn')
+    section.style.display = pollActive ? 'block' : 'none'
+    btn.style.borderColor = pollActive ? 'var(--text)' : 'var(--border)'
+    btn.style.background = pollActive ? 'var(--bg4)' : 'var(--bg3)'
+}
+
+async function publishPost() {
+    if (!currentUser || !currentUserData) { showToast('Сначала войдите!'); return; }
+    const text = document.getElementById('postText').value.trim()
+    if (!text && !selectedPhotos.length) return
+
+    const btn = document.getElementById('postBtn')
+    btn.disabled = true
+    btn.textContent = 'Публикуем...'
+
+    // Build poll data if active
+    let pollData = null
+    if (pollActive) {
+        const opts = ['pollOpt1','pollOpt2','pollOpt3','pollOpt4']
+            .map(id => document.getElementById(id).value.trim())
+            .filter(Boolean)
+        if (opts.length >= 2) {
+            pollData = { options: opts, votes: {} }
+        }
+    }
+
+    try {
+        const postObj = {
+            text: text || '',
+            authorUid: currentUser.uid,
+            authorName: currentUserData.name || currentUserData.username,
+            authorUsername: currentUserData.username,
+            authorAvatar: currentUserData.avatar || '',
+            createdAt: Date.now(),
+            likes: 0,
+            commentCount: 0,
+            views: 0,
+        }
+        if (selectedPhotos.length) postObj.photos = selectedPhotos
+        if (pollData) postObj.poll = pollData
+
+        await db.ref('social_posts').push(postObj)
+        document.getElementById('postText').value = ''
+        selectedPhotos = []
+        renderPhotoPreviews()
+        if (pollActive) togglePoll()
+        ;['pollOpt1','pollOpt2','pollOpt3','pollOpt4'].forEach(id => { document.getElementById(id).value = '' })
+        updateCharCounter()
+        showToast('✅ Опубликовано!')
+
+        // Reload profile posts if profile is open
+        if (viewingUid && document.getElementById('profileView').style.display !== 'none' && currentProfileTab === 'posts') {
+            loadProfilePosts(viewingUid)
+        }
+    } catch (e) {
+        showToast('Ошибка: ' + e.message)
+    }
+    btn.disabled = false
+    btn.textContent = 'Опубликовать'
+}
+
+// ===== POLL VOTE =====
+async function votePoll(postId, optionIndex) {
+    if (!currentUser) { showToast('Войдите чтобы голосовать'); return; }
+    const ref = db.ref(`social_posts/${postId}`)
+    const snap = await ref.once('value')
+    const post = snap.val()
+    if (!post || !post.poll) return
+    if (post.poll.userVotes && post.poll.userVotes[currentUser.uid] !== undefined) {
+        showToast('Вы уже голосовали'); return;
+    }
+    await ref.transaction(p => {
+        if (!p || !p.poll) return p
+        if (!p.poll.votes) p.poll.votes = {}
+        if (!p.poll.userVotes) p.poll.userVotes = {}
+        p.poll.votes[optionIndex] = (p.poll.votes[optionIndex] || 0) + 1
+        p.poll.userVotes[currentUser.uid] = optionIndex
+        return p
+    })
+    showToast('✅ Голос засчитан!')
+}
+
+// ===== LIKES =====
+async function toggleLike(postId) {
+    if (!currentUser) { showToast('Войдите, чтобы лайкать'); return; }
+    const ref = db.ref(`social_posts/${postId}`)
+    const snap = await ref.once('value')
+    const post = snap.val()
+    if (!post) return
+
+    const liked = post.likedBy && post.likedBy[currentUser.uid]
+    const updates = {
+        likes: (post.likes || 0) + (liked ? -1 : 1),
+        [`likedBy/${currentUser.uid}`]: liked ? null : true
+    }
+    await ref.update(updates)
+}
+
+// ===== POST DETAIL =====
+async function openPost(postId) {
+    const snap = await db.ref(`social_posts/${postId}`).once('value')
+    const post = snap.val()
+    if (!post) return
+
+    // Increment views only once per session
+    if (!viewedPostsSet.has(postId)) {
+        viewedPostsSet.add(postId)
+        db.ref(`social_posts/${postId}`).transaction(p => {
+            if (p) p.views = (p.views || 0) + 1
+            return p
+        })
+    }
+
+    // Открываем модал ПЕРВЫМ, чтобы DOM был готов
+    openModal('postDetailModal')
+
+    const body = document.getElementById('postDetailBody')
+    const isLiked = currentUser && post.likedBy && post.likedBy[currentUser.uid]
+    const avatarHtml = post.authorAvatar
+        ? `<img src="${post.authorAvatar}" style="width:42px;height:42px;border-radius:50%;object-fit:cover;">`
+        : `<div style="font-size:2rem;">🤡</div>`
+
+    body.innerHTML = `
+        <div style="display:flex;gap:12px;margin-bottom:12px;align-items:center;">
+            ${avatarHtml}
+            <div>
+                <div style="font-weight:700;">${esc(post.authorName)}</div>
+                <div style="color:var(--text2);font-size:0.85rem;">@${esc(post.authorUsername)}</div>
+            </div>
+        </div>
+        <div style="font-size:1.1rem;line-height:1.7;margin-bottom:16px;white-space:pre-wrap;">${esc(post.text)}</div>
+        <div style="color:var(--text2);font-size:0.85rem;margin-bottom:12px;">${new Date(post.createdAt).toLocaleString('ru')}</div>
+        <div style="display:flex;gap:6px;border-top:1px solid var(--border);border-bottom:1px solid var(--border);padding:8px 0;margin-bottom:12px;">
+            <button class="action-btn like ${isLiked?'liked':''}" onclick="toggleLike('${postId}')">
+                <span class="action-icon">${isLiked?'❤️':'🤍'}</span> ${post.likes||0}
+            </button>
+            <button class="action-btn comment">
+                <span class="action-icon">💬</span> ${post.commentCount||0}
+            </button>
+        </div>
+        <div id="postComments"><div class="feed-loading"><div class="spinner-small"></div></div></div>
+        ${currentUser ? `<div class="comment-input-row">
+            <img src="${currentUserData?.avatar||'img/ico2.png'}" class="comment-avatar" style="width:38px;height:38px;border-radius:50%;object-fit:cover;">
+            <textarea class="comment-input" id="commentInput" placeholder="Напиши комментарий..."></textarea>
+            <button class="comment-send-btn" onclick="sendComment('${postId}')">Отправить</button>
+        </div>` : '<div style="color:var(--text2);text-align:center;padding:12px;">Войдите, чтобы комментировать</div>'}
+    `
+
+    // Запускаем listener ПОСЛЕ того как div#postComments уже в DOM
+    loadComments(postId)
+}
+
+let commentsListener = null
+let commentsListenerPostId = null
+
+async function loadComments(postId) {
+    // Detach previous listener
+    if (commentsListener && commentsListenerPostId) {
+        db.ref(`social_comments/${commentsListenerPostId}`).off('value', commentsListener)
+    }
+
+    const container = document.getElementById('postComments')
+    if (!container) return
+
+    commentsListenerPostId = postId
+    console.log('[Comments] Читаем путь:', `social_comments/${postId}`)
+    commentsListener = db.ref(`social_comments/${postId}`).on('value', snap => {
+        const container2 = document.getElementById('postComments')
+        if (!container2) { console.warn('[Comments] контейнер не найден в DOM'); return }
+        const comments = []
+        snap.forEach(c => {
+            const val = c.val()
+            console.log('[Comments] узел:', c.key, val)
+            comments.push({ id: c.key, ...val })
+        })
+        comments.sort((a, b) => (a.createdAt || 0) - (b.createdAt || 0))
+        console.log('[Comments] Получено из Firebase:', comments.length, comments)
+
+        if (!comments.length) {
+            container2.innerHTML = '<div style="color:var(--text2);text-align:center;padding:20px;font-size:0.9rem;">Комментариев нет — напиши первым!</div>'
+            return
+        }
+        container2.innerHTML = comments.map(c => `
+            <div class="comment-card">
+                <div class="comment-avatar">${c.authorAvatar ? `<img src="${c.authorAvatar}" style="width:38px;height:38px;border-radius:50%;object-fit:cover;">` : '🤡'}</div>
+                <div class="comment-body">
+                    <span class="comment-name">${esc(c.authorName || c.authorUsername || 'Аноним')}</span>
+                    <span class="comment-handle" style="margin-left:6px;">@${esc(c.authorUsername || '?')} · ${formatTime(c.createdAt)}</span>
+                    <div class="comment-text">${esc(c.text || '')}</div>
+                </div>
+            </div>
+        `).join('')
+        console.log('[Comments] Отрисовано:', comments.length, comments)
+    })
+}
+
+async function sendComment(postId) {
+    if (!currentUser || !currentUserData) return
+    const input = document.getElementById('commentInput')
+    const text = input.value.trim()
+    if (!text) return
+    input.value = ''
+
+    try {
+        await db.ref(`social_comments/${postId}`).push({
+            text,
+            authorUid: currentUser.uid,
+            authorName: currentUserData.name || currentUserData.username,
+            authorUsername: currentUserData.username,
+            authorAvatar: currentUserData.avatar || '',
+            createdAt: Date.now(),
+        })
+        // Increment comment count
+        db.ref(`social_posts/${postId}`).transaction(p => {
+            if (p) p.commentCount = (p.commentCount || 0) + 1
+            return p
+        })
+        // НЕ вызываем loadComments — real-time listener сам обновит
+    } catch(e) {
+        showToast('Ошибка: ' + e.message)
+        document.getElementById('commentInput').value = text // вернуть текст при ошибке
+    }
+}
+
+// ===== PROFILE =====
+async function loadProfile(uid) {
+    const snap = await db.ref(`social_users/${uid}`).once('value')
+    const user = snap.val()
+    if (!user) return
+
+    const isMe = currentUser && currentUser.uid === uid
+
+    document.getElementById('profileName').textContent = user.name || user.username
+    document.getElementById('profileHandle').textContent = '@' + user.username
+    document.getElementById('profileFollowing').textContent = user.following || 0
+    document.getElementById('profileFollowers').textContent = user.followers || 0
+    document.getElementById('profileJoined').textContent = new Date(user.createdAt || Date.now()).toLocaleDateString('ru', { month: 'long', year: 'numeric' })
+
+    const bioEl = document.getElementById('profileBio')
+    if (user.bio) { bioEl.textContent = user.bio; bioEl.style.display = 'block' }
+    else { bioEl.style.display = 'none' }
+
+    const avatarEl = document.getElementById('profileAvatarEl')
+    if (user.avatar) {
+        avatarEl.innerHTML = `<img src="${user.avatar}" style="width:88px;height:88px;border-radius:50%;object-fit:cover;border:4px solid var(--bg);">`
+    } else {
+        avatarEl.textContent = '🤡'
+    }
+
+    document.getElementById('profileEditBtn').style.display = isMe ? 'block' : 'none'
+    document.getElementById('profileBannerEditBtn').style.display = isMe ? 'flex' : 'none'
+
+    if (!isMe && currentUser) {
+        const followBtn = document.getElementById('profileFollowBtn')
+        followBtn.style.display = 'block'
+        const followSnap = await db.ref(`social_follows/${currentUser.uid}/${uid}`).once('value')
+        if (followSnap.exists()) {
+            followBtn.textContent = 'Отписаться'
+            followBtn.className = 'follow-btn following'
+        } else {
+            followBtn.textContent = 'Подписаться'
+            followBtn.className = 'follow-btn'
+        }
+        followBtn.dataset.targetUid = uid
+    } else {
+        document.getElementById('profileFollowBtn').style.display = 'none'
+    }
+
+    // Prefill edit modal
+    document.getElementById('editName').value = user.name || ''
+    document.getElementById('editBio').value = user.bio || ''
+    document.getElementById('editAvatar').value = user.avatar || ''
+}
+
+function switchProfileTab(tab) {
+    currentProfileTab = tab
+    document.querySelectorAll('.profile-tab').forEach(b => b.classList.remove('active'))
+    document.getElementById(`ptab${tab.charAt(0).toUpperCase()+tab.slice(1)}`).classList.add('active')
+
+    if (tab === 'posts') loadProfilePosts(viewingUid)
+    else if (tab === 'wall') loadWall(viewingUid)
+    else if (tab === 'likes') loadLikedPosts(viewingUid)
+}
+
+async function loadProfilePosts(uid) {
+    const container = document.getElementById('profilePostsContainer')
+    container.innerHTML = '<div class="feed-loading"><div class="spinner-small"></div></div>'
+    // Don't use orderByChild (requires Firebase index) — fetch all and filter client-side
+    const snap = await db.ref('social_posts').once('value')
+    const posts = []
+    snap.forEach(c => {
+        const val = c.val()
+        if (val && val.authorUid === uid) posts.push({ id: c.key, ...val })
+    })
+    posts.sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0))
+    console.log('[Profile] постов пользователя', uid, ':', posts.length)
+    if (!posts.length) {
+        container.innerHTML = '<div class="empty-state"><div class="empty-state-icon">📝</div><div class="empty-state-title">Нет постов</div></div>'
+    } else {
+        container.innerHTML = posts.map(p => buildPostCard(p)).join('')
+    }
+}
+
+async function loadWall(uid) {
+    const container = document.getElementById('profilePostsContainer')
+    container.innerHTML = '<div class="feed-loading"><div class="spinner-small"></div></div>'
+    const snap = await db.ref(`social_walls/${uid}`).orderByChild('createdAt').once('value')
+    const comments = []
+    snap.forEach(c => comments.unshift({ id: c.key, ...c.val() }))
+
+    let html = ''
+    if (currentUser && currentUserData) {
+        html += `<div class="composer" style="border-bottom:1px solid var(--border);">
+            <div class="comment-avatar" style="width:42px;height:42px;border-radius:50%;display:flex;align-items:center;justify-content:center;background:var(--bg4);font-size:1.3rem;">${currentUserData.avatar ? `<img src="${currentUserData.avatar}" style="width:42px;height:42px;border-radius:50%;object-fit:cover;">` : '🤡'}</div>
+            <div style="flex:1;">
+                <textarea class="composer-textarea" id="wallInput" placeholder="Напиши на стене..." style="min-height:50px;font-size:0.95rem;"></textarea>
+                <div style="text-align:right;margin-top:6px;">
+                    <button class="comment-send-btn" onclick="sendWallPost('${uid}')">Написать</button>
+                </div>
+            </div>
+        </div>`
+    }
+
+    if (!comments.length) {
+        html += '<div class="empty-state"><div class="empty-state-icon">💬</div><div class="empty-state-title">Стена пуста</div><div class="empty-state-sub">Напиши что-нибудь!</div></div>'
+    } else {
+        html += comments.map(c => `
+            <div class="comment-card" style="padding:14px 16px;border-bottom:1px solid var(--border);">
+                <div style="font-size:1.8rem;width:42px;text-align:center;">${c.authorAvatar ? `<img src="${c.authorAvatar}" style="width:38px;height:38px;border-radius:50%;object-fit:cover;">` : '🤡'}</div>
+                <div style="flex:1;">
+                    <span style="font-weight:700;font-size:0.9rem;">${esc(c.authorName)}</span>
+                    <span style="color:var(--text2);font-size:0.8rem;margin-left:6px;">@${esc(c.authorUsername)} · ${formatTime(c.createdAt)}</span>
+                    <div style="margin-top:4px;font-size:0.93rem;line-height:1.5;">${esc(c.text)}</div>
+                </div>
+            </div>
+        `).join('')
+    }
+
+    container.innerHTML = html
+}
+
+async function sendWallPost(targetUid) {
+    if (!currentUser || !currentUserData) return
+    const input = document.getElementById('wallInput')
+    const text = input.value.trim()
+    if (!text) return
+    input.value = ''
+
+    await db.ref(`social_walls/${targetUid}`).push({
+        text,
+        authorUid: currentUser.uid,
+        authorName: currentUserData.name || currentUserData.username,
+        authorUsername: currentUserData.username,
+        authorAvatar: currentUserData.avatar || '',
+        createdAt: Date.now(),
+    })
+    loadWall(targetUid)
+    showToast('✅ Написано на стене!')
+}
+
+async function loadLikedPosts(uid) {
+    const container = document.getElementById('profilePostsContainer')
+    container.innerHTML = '<div class="feed-loading"><div class="spinner-small"></div></div>'
+    // For liked posts, we'd need a separate index — simplified: show empty for now
+    container.innerHTML = '<div class="empty-state"><div class="empty-state-icon">❤️</div><div class="empty-state-title">Лайкнутые посты</div><div class="empty-state-sub">Скоро будет доступно</div></div>'
+}
+
+// ===== EDIT PROFILE =====
+async function saveProfile() {
+    if (!currentUser || !currentUserData) return
+    const name = document.getElementById('editName').value.trim()
+    const bio = document.getElementById('editBio').value.trim()
+    const avatar = document.getElementById('editAvatar').value.trim()
+
+    await db.ref(`social_users/${currentUser.uid}`).update({ name, bio, avatar })
+    currentUserData = { ...currentUserData, name, bio, avatar }
+    updateSidebar()
+    if (currentUserData.avatar) document.getElementById('composerAvatar').src = currentUserData.avatar
+    closeModal('editProfileModal')
+    loadProfile(currentUser.uid)
+    showToast('✅ Профиль обновлён!')
+}
+
+// ===== FOLLOW LIST =====
+async function openFollowList(type) {
+    const title = type === 'following' ? 'Подписки' : 'Подписчики'
+    document.getElementById('followListTitle').textContent = title
+    const body = document.getElementById('followListBody')
+    body.innerHTML = '<div class="feed-loading"><div class="spinner-small"></div></div>'
+    openModal('followListModal')
+
+    const uid = viewingUid || currentUser?.uid
+    if (!uid) { body.innerHTML = '<div style="padding:20px;text-align:center;color:var(--text2);">Войдите в аккаунт</div>'; return; }
+
+    try {
+        let userUids = []
+        if (type === 'following') {
+            // people this user follows
+            const snap = await db.ref(`social_follows/${uid}`).once('value')
+            snap.forEach(c => userUids.push(c.key))
+        } else {
+            // people who follow this user — scan all follows
+            const snap = await db.ref('social_follows').once('value')
+            snap.forEach(followerNode => {
+                if (followerNode.child(uid).exists()) userUids.push(followerNode.key)
+            })
+        }
+
+        if (!userUids.length) {
+            body.innerHTML = `<div class="empty-state"><div class="empty-state-icon">👤</div><div class="empty-state-title">Пусто</div></div>`
+            return
+        }
+
+        const users = await Promise.all(userUids.map(async uid2 => {
+            const s = await db.ref(`social_users/${uid2}`).once('value')
+            return s.exists() ? { uid: uid2, ...s.val() } : null
+        }))
+
+        body.innerHTML = users.filter(Boolean).map(u => `
+            <div class="suggest-user" style="padding:12px 16px;cursor:pointer;border-bottom:1px solid var(--border);" onclick="closeModal('followListModal');showProfile('${u.uid}')">
+                <div class="suggest-avatar">${u.avatar ? `<img src="${u.avatar}" style="width:40px;height:40px;border-radius:50%;object-fit:cover;">` : '🤡'}</div>
+                <div class="suggest-info">
+                    <div class="suggest-name">${esc(u.name || u.username)}</div>
+                    <div class="suggest-handle">@${esc(u.username)}</div>
+                </div>
+            </div>
+        `).join('')
+    } catch(e) {
+        body.innerHTML = `<div style="padding:20px;text-align:center;color:var(--text2);">Ошибка загрузки</div>`
+    }
+}
+
+// ===== FOLLOW =====
+async function toggleFollow() {
+    if (!currentUser) { showToast('Войдите чтобы подписаться'); return; }
+    const btn = document.getElementById('profileFollowBtn')
+    const targetUid = btn.dataset.targetUid
+    if (!targetUid) return
+
+    const ref = db.ref(`social_follows/${currentUser.uid}/${targetUid}`)
+    const snap = await ref.once('value')
+    const isFollowing = snap.exists()
+
+    if (isFollowing) {
+        await ref.remove()
+        db.ref(`social_users/${targetUid}`).transaction(u => { if (u) u.followers = Math.max(0, (u.followers||0)-1); return u })
+        db.ref(`social_users/${currentUser.uid}`).transaction(u => { if (u) u.following = Math.max(0, (u.following||0)-1); return u })
+        btn.textContent = 'Подписаться'
+        btn.className = 'follow-btn'
+        showToast('Отписался')
+    } else {
+        await ref.set(true)
+        db.ref(`social_users/${targetUid}`).transaction(u => { if (u) u.followers = (u.followers||0)+1; return u })
+        db.ref(`social_users/${currentUser.uid}`).transaction(u => { if (u) u.following = (u.following||0)+1; return u })
+        btn.textContent = 'Отписаться'
+        btn.className = 'follow-btn following'
+        showToast('✅ Подписался!')
+    }
+    loadProfile(targetUid)
+}
+
+// ===== SEARCH =====
+async function doSearch(query) {
+    const container = document.getElementById('searchResults')
+    if (!query.trim()) {
+        container.innerHTML = `<div class="empty-state">
+            <div class="empty-state-icon">🔍</div>
+            <div class="empty-state-title">Найди кого-нибудь</div>
+        </div>`
+        return
+    }
+    container.innerHTML = '<div class="feed-loading"><div class="spinner-small"></div></div>'
+    const snap = await db.ref('social_users').once('value')
+    const results = []
+    const q = query.toLowerCase()
+    snap.forEach(c => {
+        const u = c.val()
+        if ((u.username && u.username.includes(q)) || (u.name && u.name.toLowerCase().includes(q))) {
+            results.push({ uid: c.key, ...u })
+        }
+    })
+
+    if (!results.length) {
+        container.innerHTML = '<div class="empty-state"><div class="empty-state-icon">😕</div><div class="empty-state-title">Никого не нашли</div></div>'
+        return
+    }
+
+    container.innerHTML = results.map(u => `
+        <div class="suggest-user" style="padding:12px 16px;cursor:pointer;" onclick="showProfile('${u.uid}')">
+            <div class="suggest-avatar">${u.avatar ? `<img src="${u.avatar}" style="width:40px;height:40px;border-radius:50%;object-fit:cover;">` : '🤡'}</div>
+            <div class="suggest-info">
+                <div class="suggest-name">${esc(u.name || u.username)}</div>
+                <div class="suggest-handle">@${esc(u.username)}</div>
+            </div>
+        </div>
+    `).join('')
+}
+
+// ===== SUGGESTED USERS =====
+async function loadSuggestedUsers() {
+    const container = document.getElementById('suggestedUsers')
+    const snap = await db.ref('social_users').limitToLast(5).once('value')
+    const users = []
+    snap.forEach(c => {
+        if (c.key !== currentUser?.uid) users.push({ uid: c.key, ...c.val() })
+    })
+    if (!users.length) { container.innerHTML = '<div style="color:var(--text2);font-size:0.85rem;">Пока никого нет</div>'; return; }
+    container.innerHTML = users.map(u => `
+        <div class="suggest-user">
+            <div class="suggest-avatar">${u.avatar ? `<img src="${u.avatar}" style="width:40px;height:40px;border-radius:50%;object-fit:cover;">` : '🤡'}</div>
+            <div class="suggest-info">
+                <div class="suggest-name">${esc(u.name || u.username)}</div>
+                <div class="suggest-handle">@${esc(u.username)}</div>
+            </div>
+            <button class="follow-btn" onclick="showProfile('${u.uid}')">Смотреть</button>
+        </div>
+    `).join('')
+}
+
+// ===== MODAL =====
+function openModal(id) { document.getElementById(id).classList.add('open') }
+function closeModal(id) {
+    document.getElementById(id).classList.remove('open')
+    if (id === 'postDetailModal' && commentsListener && commentsListenerPostId) {
+        db.ref(`social_comments/${commentsListenerPostId}`).off('value', commentsListener)
+        commentsListener = null
+        commentsListenerPostId = null
+    }
+}
+document.querySelectorAll('.modal-overlay').forEach(m => {
+    m.addEventListener('click', e => { if (e.target === m) m.classList.remove('open') })
+})
+
+// ===== HELPERS =====
+function esc(str) {
+    if (!str) return ''
+    return String(str).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;')
+}
+
+function formatTime(ts) {
+    if (!ts) return ''
+    const diff = Date.now() - ts
+    if (diff < 60000) return 'сейчас'
+    if (diff < 3600000) return Math.floor(diff/60000) + ' мин'
+    if (diff < 86400000) return Math.floor(diff/3600000) + ' ч'
+    if (diff < 604800000) return Math.floor(diff/86400000) + ' дн'
+    return new Date(ts).toLocaleDateString('ru')
+}
+
+function showToast(msg) {
+    const t = document.getElementById('toast')
+    t.textContent = msg
+    t.classList.add('show')
+    setTimeout(() => t.classList.remove('show'), 2500)
+}
+
+// ===== CHAT =====
+let socialChatRef = null
+let socialChatLoaded = false
+
+function showChat() {
+    setNavActive('navChat')
+    document.getElementById('feedView').style.display = 'none'
+    document.getElementById('profileView').style.display = 'none'
+    document.getElementById('searchView').style.display = 'none'
+    document.getElementById('chatView').style.display = 'flex'
+    document.getElementById('chatView').style.flexDirection = 'column'
+    if (currentUser && currentUserData) {
+        if (currentUserData.avatar) document.getElementById('socialChatAvatar').src = currentUserData.avatar
+    }
+    if (!socialChatLoaded) {
+        loadSocialChat()
+        socialChatLoaded = true
+    }
+}
+
+function loadSocialChat() {
+    const container = document.getElementById('socialChatMessages')
+    if (!container) return
+
+    // Detach old listener
+    if (socialChatRef) socialChatRef.off('child_added')
+
+    container.innerHTML = '<div style="text-align:center;color:var(--text2);padding:20px;font-size:0.85rem;">Загрузка...</div>'
+    let firstBatch = []
+    let firstLoadDone = false
+
+    socialChatRef = db.ref('messages').orderByChild('timestamp')
+
+    // Load ALL messages (no limit)
+    socialChatRef.once('value', snap => {
+        container.innerHTML = ''
+        firstBatch = []
+        snap.forEach(child => {
+            firstBatch.push({ key: child.key, ...child.val() })
+        })
+        firstBatch.forEach(msg => appendSocialChatMsg(msg, container, false))
+        firstLoadDone = true
+        // Scroll to bottom after initial load
+        container.scrollTop = container.scrollHeight
+
+        // Now listen for new messages only
+        socialChatRef.orderByChild('timestamp').startAfter(Date.now() - 1000).on('child_added', snap => {
+            if (!firstLoadDone) return
+            const msg = { key: snap.key, ...snap.val() }
+            // Avoid duplicates
+            if (container.querySelector(`[data-msg-id="${snap.key}"]`)) return
+            appendSocialChatMsg(msg, container, true)
+        })
+    })
+}
+
+function appendSocialChatMsg(msg, container, scroll) {
+    if (!msg || container.querySelector(`[data-msg-id="${msg.key}"]`)) return
+
+    const isMe = currentUser && msg.uid === currentUser.uid
+    const time = new Date(msg.timestamp || Date.now()).toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' })
+    const avatarChar = (msg.username || '?').charAt(0).toUpperCase()
+
+    const div = document.createElement('div')
+    div.dataset.msgId = msg.key
+    div.style.cssText = `display:flex;gap:10px;align-items:flex-start;${isMe ? 'flex-direction:row-reverse;' : ''}`
+
+    const avatarEl = `<div style="
+        width:34px;height:34px;border-radius:50%;
+        background:${isMe ? 'var(--accent)' : 'var(--bg4)'};
+        display:flex;align-items:center;justify-content:center;
+        font-size:0.85rem;font-weight:700;color:#fff;flex-shrink:0;
+    ">${avatarChar}</div>`
+
+    const bubbleColor = isMe ? 'var(--accent)' : 'var(--bg3)'
+    const bubbleTextColor = isMe ? '#fff' : 'var(--text)'
+    const align = isMe ? 'right' : 'left'
+
+    let content = ''
+    if (msg.text) content += `<div style="font-size:0.92rem;line-height:1.5;word-break:break-word;">${esc(msg.text)}</div>`
+    if (msg.image) content += `<img src="${msg.image}" style="max-width:220px;border-radius:10px;margin-top:4px;cursor:pointer;" onclick="this.requestFullscreen?.()" loading="lazy">`
+
+    div.innerHTML = avatarEl + `<div style="max-width:75%;">
+        ${!isMe ? `<div style="font-size:0.75rem;color:var(--text2);margin-bottom:3px;text-align:${align};">${esc(msg.username || 'Гость')}</div>` : ''}
+        <div style="
+            background:${bubbleColor};
+            color:${bubbleTextColor};
+            border-radius:${isMe ? '18px 18px 4px 18px' : '18px 18px 18px 4px'};
+            padding:8px 14px;
+            font-size:0.92rem;
+        ">${content}</div>
+        <div style="font-size:0.72rem;color:var(--text2);margin-top:3px;text-align:${align};">${time}</div>
+    </div>`
+
+    container.appendChild(div)
+    if (scroll) container.scrollTop = container.scrollHeight
+}
+
+function autoResizeSocialChat(el) {
+    el.style.height = 'auto'
+    el.style.height = Math.min(el.scrollHeight, 120) + 'px'
+}
+
+function handleSocialChatKey(e) {
+    if (e.key === 'Enter' && !e.shiftKey) {
+        e.preventDefault()
+        sendSocialChatMessage()
+    }
+}
+
+async function sendSocialChatMessage() {
+    if (!currentUser || !currentUserData) { showToast('Войдите, чтобы писать'); return; }
+    const input = document.getElementById('socialChatInput')
+    const text = input.value.trim()
+    if (!text) return
+    input.value = ''
+    input.style.height = 'auto'
+
+    try {
+        await db.ref('messages').push({
+            text,
+            uid: currentUser.uid,
+            username: currentUserData.name || currentUserData.username,
+            timestamp: Date.now(),
+        })
+    } catch(e) {
+        showToast('Ошибка отправки: ' + e.message)
+        input.value = text
+    }
+}
+
+// Keyboard shortcut — Ctrl+Enter to post
+document.addEventListener('keydown', e => {
+    if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') {
+        const focused = document.activeElement
+        if (focused && focused.id === 'postText') publishPost()
+    }
+})
+</script>
+</body>
+</html>

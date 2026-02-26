@@ -994,7 +994,6 @@
         </button>
         <button class="nav-item" id="navAdmin" onclick="showAdmin()" style="display:none;">
             <span class="nav-icon">🔧</span>
-            <span>Админ</span>
         </button>
 
         <div class="nav-divider"></div>
@@ -1882,14 +1881,7 @@ async function loadProfile(uid) {
     ])
     const realFollowing = followingSnap.numChildren()
     let realFollowers = 0
-    console.log('[PROFILE] loading followers for uid:', uid)
-    console.log('[PROFILE] social_follows total nodes:', allFollowsSnap.numChildren())
-    allFollowsSnap.forEach(node => {
-        const has = node.child(uid).exists()
-        console.log('[PROFILE] checking follower node:', node.key, '-> has follow?', has)
-        if (has) realFollowers++
-    })
-    console.log('[PROFILE] realFollowing:', realFollowing, 'realFollowers:', realFollowers)
+    allFollowsSnap.forEach(node => { if (node.child(uid).exists()) realFollowers++ })
     document.getElementById('profileFollowing').textContent = realFollowing
     document.getElementById('profileFollowers').textContent = realFollowers
 
@@ -2687,24 +2679,23 @@ function clearChatPhotoPreview() {
 
 // ===== FIX: следим за реальным числом подписок через real-time listener =====
 function watchFollowCounts(uid) {
-    console.log('[FOLLOW] watchFollowCounts called for uid:', uid)
-    // Following: count children of social_follows/{uid}
+    // Watch following count (lightweight - only this user's node)
     db.ref(`social_follows/${uid}`).on('value', snap => {
-        console.log('[FOLLOW] following count:', snap.numChildren(), 'for uid:', uid)
         const el = document.getElementById('profileFollowing')
         if (el) el.textContent = snap.numChildren()
     })
-    // Followers: scan all social_follows and count who follows this uid
-    db.ref('social_follows').on('value', snap => {
-        let count = 0
-        snap.forEach(node => {
-            const exists = node.child(uid).exists()
-            if (exists) { count++; console.log('[FOLLOW] follower found:', node.key) }
-        })
-        console.log('[FOLLOW] total followers for', uid, ':', count, '| total nodes in social_follows:', snap.numChildren())
-        const el = document.getElementById('profileFollowers')
-        if (el) el.textContent = count
-    })
+    // Followers: do NOT use .on() on all social_follows — it fires before all data is loaded
+    // Instead do a one-time count now, and refresh after toggle actions
+    refreshFollowersCount(uid)
+}
+
+async function refreshFollowersCount(uid) {
+    if (!uid) return
+    const snap = await db.ref('social_follows').once('value')
+    let count = 0
+    snap.forEach(node => { if (node.child(uid).exists()) count++ })
+    const el = document.getElementById('profileFollowers')
+    if (el) el.textContent = count
 }
 
 // ===== ADMIN PANEL JS =====

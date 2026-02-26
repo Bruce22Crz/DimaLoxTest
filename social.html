@@ -2034,6 +2034,11 @@ async function saveProfile() {
 }
 
 // ===== FOLLOW LIST =====
+function openFollowUser(uid) {
+    closeModal('followListModal')
+    showProfile(uid)
+}
+
 async function openFollowList(type) {
     const title = type === 'following' ? 'Подписки' : 'Подписчики'
     document.getElementById('followListTitle').textContent = title
@@ -2073,7 +2078,7 @@ async function openFollowList(type) {
             const avatarHtml = u.avatar
                 ? '<img src="' + u.avatar + '" style="width:40px;height:40px;border-radius:50%;object-fit:cover;">'
                 : '🤡'
-            return '<div class="suggest-user" style="padding:12px 16px;cursor:pointer;border-bottom:1px solid var(--border);" onclick="closeModal('followListModal');showProfile('' + safeUid + '')">'
+            return '<div class="suggest-user" style="padding:12px 16px;cursor:pointer;border-bottom:1px solid var(--border);" onclick="openFollowUser(&apos;' + safeUid + '&apos;)">'
                 + '<div class="suggest-avatar">' + avatarHtml + '</div>'
                 + '<div class="suggest-info">'
                 + '<div class="suggest-name">' + esc(u.name || u.username || u.uid) + '</div>'
@@ -4114,6 +4119,11 @@ async function saveProfile() {
 }
 
 // ===== FOLLOW LIST =====
+function openFollowUser(uid) {
+    closeModal('followListModal')
+    showProfile(uid)
+}
+
 async function openFollowList(type) {
     const title = type === 'following' ? 'Подписки' : 'Подписчики'
     document.getElementById('followListTitle').textContent = title

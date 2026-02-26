@@ -5281,25 +5281,35 @@ window.adminDeletePromo = async function (code) {
 			}
 		}
 
-		// Draw buckets
-		const bucketsY = cellW * 1.5 + plinkoRows * cellW + cellW * 0.5
-		const bucketW = cellW * 0.85
-		const xOffset = (W - mults.length * cellW) / 2
+		// Draw buckets — evenly fill full canvas width
+		const bucketH = Math.max(26, cellW * 0.8)
+		const bucketsY = H - bucketH - 4
+		const bucketSlot = W / mults.length
+		const gap = Math.max(2, bucketSlot * 0.06)
 		mults.forEach((m, i) => {
-			const bx = xOffset + i * cellW + cellW * 0.075
+			const bx = i * bucketSlot + gap / 2
+			const bw = bucketSlot - gap
 			const isHit = highlighted !== undefined && highlighted === i
-			ctx.fillStyle = isHit ? '#ffffff' : getMultColor(m)
-			ctx.globalAlpha = isHit ? 1 : 0.85
+			const color = getMultColor(m)
+			ctx.globalAlpha = isHit ? 1 : 0.9
+			ctx.fillStyle = isHit ? 'rgba(255,255,255,0.15)' : color + '33'
 			ctx.beginPath()
-			ctx.roundRect(bx, bucketsY, bucketW, cellW * 0.75, 4)
+			ctx.roundRect(bx, bucketsY, bw, bucketH, 4)
 			ctx.fill()
+			ctx.strokeStyle = isHit ? '#ffffff' : color
+			ctx.lineWidth = isHit ? 2 : 1.5
+			ctx.beginPath()
+			ctx.roundRect(bx, bucketsY, bw, bucketH, 4)
+			ctx.stroke()
 			ctx.globalAlpha = 1
-			ctx.fillStyle = '#fff'
-			ctx.font = `bold ${Math.max(8, cellW * 0.28)}px Inter,sans-serif`
+			const fontSize = Math.max(7, Math.min(13, bw * 0.36))
+			ctx.fillStyle = isHit ? '#ffffff' : color
+			ctx.font = `bold ${fontSize}px Inter,sans-serif`
 			ctx.textAlign = 'center'
-			const label = m >= 1 ? m + 'x' : m + 'x'
-			ctx.fillText(label, bx + bucketW / 2, bucketsY + cellW * 0.52)
+			ctx.textBaseline = 'middle'
+			ctx.fillText(m + 'x', bx + bw / 2, bucketsY + bucketH / 2)
 		})
+		ctx.textBaseline = 'alphabetic'
 	}
 
 	function simulatePath(rows) {
@@ -5399,7 +5409,8 @@ window.adminDeletePromo = async function (code) {
 
 	function updatePlinkoBalance() {
 		const el = document.getElementById('plinkoBalance')
-		if (el) el.textContent = userCurrency.toFixed(1)
+		if (el) el.textContent = Math.round(userCurrency)
+		saveCurrencyToFirebase()
 	}
 
 	window.dropPlinkoBalls = async function () {
@@ -5470,13 +5481,46 @@ window.adminDeletePromo = async function (code) {
 		const net = totalWin - totalBet
 		const resultEl = document.getElementById('plinkoResult')
 		if (resultEl) {
+			const multsList = []
+			// collect all mults from paths
+			resultEl.style.cssText =
+				'display:block !important; opacity:1 !important; transform:none !important; margin-top:10px;'
 			if (net > 0) {
-				resultEl.innerHTML = `<span style="color:#00ba7c">🎉 ВЫИГРЫШ +${net.toFixed(1)} (x${bestMult})</span>`
+				resultEl.style.color = '#00ba7c'
+				resultEl.style.background = 'rgba(0,186,124,0.12)'
+				resultEl.style.border = '2px solid #00ba7c'
+				resultEl.style.borderRadius = '12px'
+				resultEl.style.padding = '14px'
+				resultEl.style.textAlign = 'center'
+				resultEl.style.fontWeight = 'bold'
+				resultEl.style.fontSize = '1.2rem'
+				resultEl.innerHTML = `🎉 <b>${bestMult}x</b> — выиграл <b>+${net.toFixed(0)}</b> монет!`
 			} else if (net === 0) {
-				resultEl.innerHTML = `<span style="color:#71767b">↩️ Ничья!</span>`
+				resultEl.style.color = '#71767b'
+				resultEl.style.background = 'rgba(113,118,123,0.12)'
+				resultEl.style.border = '2px solid #71767b'
+				resultEl.style.borderRadius = '12px'
+				resultEl.style.padding = '14px'
+				resultEl.style.textAlign = 'center'
+				resultEl.style.fontWeight = 'bold'
+				resultEl.style.fontSize = '1.2rem'
+				resultEl.innerHTML = `↩️ Ничья! <b>${bestMult}x</b>`
 			} else {
-				resultEl.innerHTML = `<span style="color:#f4212e">💸 Проигрыш ${Math.abs(net).toFixed(1)}</span>`
+				resultEl.style.color = '#f4212e'
+				resultEl.style.background = 'rgba(244,33,46,0.12)'
+				resultEl.style.border = '2px solid #f4212e'
+				resultEl.style.borderRadius = '12px'
+				resultEl.style.padding = '14px'
+				resultEl.style.textAlign = 'center'
+				resultEl.style.fontWeight = 'bold'
+				resultEl.style.fontSize = '1.2rem'
+				resultEl.innerHTML = `💸 <b>${bestMult}x</b> — проиграл <b>${Math.abs(net).toFixed(0)}</b> монет`
 			}
+			clearTimeout(resultEl._t)
+			resultEl._t = setTimeout(() => {
+				resultEl.style.cssText = 'display:none; margin-top:10px;'
+				resultEl.innerHTML = ''
+			}, 4000)
 		}
 
 		// Stats
@@ -5518,507 +5562,4 @@ window.adminDeletePromo = async function (code) {
 		document.getElementById('plinkoGame').style.display = 'none'
 		_origBackPlinko()
 	}
-})()
-
-// ============================================================
-// PLINKO GAME
-// ============================================================
-;(function () {
-	// Patch openCasinoGame for plinko
-	const _origOpenCasino = window.openCasinoGame
-	window.openCasinoGame = function (gameName) {
-		if (gameName === 'plinko') {
-			document
-				.querySelectorAll('.casino-game')
-				.forEach(g => (g.style.display = 'none'))
-			document.getElementById('casinoMenu').style.display = 'none'
-			const el = document.getElementById('plinkoGame')
-			if (el) el.style.display = 'block'
-			plinkoInit()
-			updatePlinkoBalance()
-		} else {
-			_origOpenCasino(gameName)
-		}
-	}
-
-	const _origBack = window.backToCasinoMenu
-	window.backToCasinoMenu = function () {
-		plinkoStop()
-		_origBack()
-	}
-
-	// ===== STATE =====
-	let plinkoRows = 8
-	let plinkoBalls = 1
-	let plinkoStats = { games: 0, won: 0, lost: 0, maxMult: 0 }
-	let plinkoAnimating = false
-	let plinkoAnimFrame = null
-	let plinkoActiveBalls = []
-
-	// Multipliers per row count
-	const PLINKO_MULTS = {
-		8: [5.6, 2.1, 1.1, 0.5, 0.3, 0.5, 1.1, 2.1, 5.6],
-		12: [10, 3, 1.6, 1.0, 0.7, 0.4, 0.2, 0.4, 0.7, 1.0, 1.6, 3, 10],
-		16: [
-			16, 9, 4.0, 2.0, 1.4, 1.0, 0.7, 0.4, 0.2, 0.4, 0.7, 1.0, 1.4, 2.0, 4.0, 9,
-			16,
-		],
-	}
-
-	const BUCKET_COLORS = {
-		high: '#f4212e',
-		medium: '#f59e0b',
-		low: '#22c55e',
-		zero: '#6b7280',
-	}
-
-	function getBucketColor(mult) {
-		if (mult >= 5) return BUCKET_COLORS.high
-		if (mult >= 1) return BUCKET_COLORS.medium
-		if (mult >= 0.4) return BUCKET_COLORS.low
-		return BUCKET_COLORS.zero
-	}
-
-	// Canvas setup
-	let canvas, ctx
-	let PIN_ROWS, COLS, W, H
-	let PADDING_X, PADDING_Y
-	let PIN_RADIUS, BALL_RADIUS
-	let pins = []
-	let buckets = []
-
-	function plinkoInit() {
-		canvas = document.getElementById('plinkoCanvas')
-		if (!canvas) return
-		ctx = canvas.getContext('2d')
-
-		const isMobile = window.innerWidth < 600
-		W = isMobile ? Math.min(window.innerWidth - 32, 420) : 460
-		H = W * 1.15
-		canvas.width = W
-		canvas.height = H
-		canvas.style.width = W + 'px'
-		canvas.style.height = H + 'px'
-
-		PIN_ROWS = plinkoRows
-		COLS = PIN_ROWS + 1
-		PADDING_X = W * 0.08
-		PADDING_Y = H * 0.06
-		PIN_RADIUS = Math.max(4, W * 0.014)
-		BALL_RADIUS = PIN_RADIUS * 1.6
-
-		const usableW = W - PADDING_X * 2
-		const usableH = H - PADDING_Y * 2 - H * 0.1 // leave room for buckets
-
-		pins = []
-		for (let row = 0; row < PIN_ROWS; row++) {
-			const pinsInRow = row + 2
-			const rowW = (usableW * (pinsInRow - 1)) / (COLS - 1)
-			const startX = W / 2 - rowW / 2
-			const y = PADDING_Y + (usableH / (PIN_ROWS - 1)) * row
-			for (let col = 0; col < pinsInRow; col++) {
-				const spacing = pinsInRow > 1 ? rowW / (pinsInRow - 1) : 0
-				pins.push({ x: startX + col * spacing, y })
-			}
-		}
-
-		const mults = PLINKO_MULTS[plinkoRows] || PLINKO_MULTS[8]
-		const totalBucketW = W - PADDING_X * 2
-		const bucketW = totalBucketW / mults.length
-		const bucketH = Math.max(28, H * 0.075)
-		const bucketY = H - bucketH / 2 - 6
-		buckets = mults.map((m, i) => ({
-			x: PADDING_X + i * bucketW + bucketW / 2,
-			y: bucketY,
-			w: bucketW - 3,
-			h: bucketH,
-			mult: m,
-		}))
-
-		plinkoActiveBalls = []
-		drawPlinko()
-	}
-
-	function drawPlinko() {
-		if (!ctx) return
-		ctx.clearRect(0, 0, W, H)
-
-		// Background
-		ctx.fillStyle = '#161616'
-		ctx.fillRect(0, 0, W, H)
-
-		// Draw pins
-		pins.forEach(p => {
-			ctx.beginPath()
-			ctx.arc(p.x, p.y, PIN_RADIUS, 0, Math.PI * 2)
-			ctx.fillStyle = '#e7e9ea'
-			ctx.fill()
-		})
-
-		// Draw buckets
-		const mults = PLINKO_MULTS[plinkoRows] || PLINKO_MULTS[8]
-		buckets.forEach((b, i) => {
-			const color = getBucketColor(b.mult)
-			const bh = b.h || Math.max(28, H * 0.075)
-			const rx = b.x - b.w / 2
-			const ry = b.y - bh / 2
-
-			// Fill
-			ctx.fillStyle = color + '33'
-			roundRect(ctx, rx, ry, b.w, bh, 5)
-			ctx.fill()
-
-			// Border
-			ctx.strokeStyle = color
-			ctx.lineWidth = 1.5
-			roundRect(ctx, rx, ry, b.w, bh, 5)
-			ctx.stroke()
-
-			// Text — size based on bucket width
-			const fontSize = Math.max(9, Math.min(13, b.w * 0.38))
-			ctx.fillStyle = color
-			ctx.font = `bold ${fontSize}px Inter, sans-serif`
-			ctx.textAlign = 'center'
-			ctx.textBaseline = 'middle'
-			ctx.fillText(b.mult + 'x', b.x, b.y)
-		})
-
-		// Draw active balls
-		plinkoActiveBalls.forEach(ball => {
-			if (!ball.done) {
-				ctx.beginPath()
-				ctx.arc(ball.x, ball.y, BALL_RADIUS, 0, Math.PI * 2)
-				ctx.fillStyle = ball.color
-				ctx.shadowColor = ball.color
-				ctx.shadowBlur = 8
-				ctx.fill()
-				ctx.shadowBlur = 0
-			}
-		})
-
-		// Draw floating multiplier labels
-		floatingLabels.forEach(lbl => {
-			ctx.globalAlpha = lbl.alpha
-			ctx.font = `bold ${Math.max(14, W * 0.045)}px Inter, sans-serif`
-			ctx.textAlign = 'center'
-			ctx.textBaseline = 'middle'
-			ctx.fillStyle = lbl.color
-			ctx.shadowColor = lbl.color
-			ctx.shadowBlur = 12
-			ctx.fillText(lbl.mult + 'x', lbl.x, lbl.y)
-			ctx.shadowBlur = 0
-			ctx.globalAlpha = 1
-		})
-	}
-
-	function roundRect(ctx, x, y, w, h, r) {
-		ctx.beginPath()
-		ctx.moveTo(x + r, y)
-		ctx.lineTo(x + w - r, y)
-		ctx.quadraticCurveTo(x + w, y, x + w, y + r)
-		ctx.lineTo(x + w, y + h - r)
-		ctx.quadraticCurveTo(x + w, y + h, x + w - r, y + h)
-		ctx.lineTo(x + r, y + h)
-		ctx.quadraticCurveTo(x, y + h, x, y + h - r)
-		ctx.lineTo(x, y + r)
-		ctx.quadraticCurveTo(x, y, x + r, y)
-		ctx.closePath()
-	}
-
-	function simulateBallPath() {
-		// Returns the bucket index the ball lands in
-		let pos = 0 // left-offset from leftmost position of current row
-		for (let row = 0; row < PIN_ROWS; row++) {
-			if (Math.random() < 0.5) pos++
-		}
-		return pos // 0 to PIN_ROWS = COLS-1 slots = COLS buckets
-	}
-
-	// Animate a single ball
-	function createAnimatedBall(color, onLand) {
-		const startX = W / 2 + (Math.random() - 0.5) * 4
-		const startY = PADDING_Y - BALL_RADIUS * 2
-
-		// Pre-compute path: sequence of x positions row by row
-		let pos = 0
-		const pathX = [W / 2]
-		for (let row = 0; row < PIN_ROWS; row++) {
-			const pinsInRow = row + 2
-			const rowW = ((W - PADDING_X * 2) * (pinsInRow - 1)) / (COLS - 1)
-			const rowStartX = W / 2 - rowW / 2
-			const spacing = pinsInRow - 1 > 0 ? rowW / (pinsInRow - 1) : 0
-			const dir = Math.random() < 0.5 ? 0 : 1
-			pos += dir
-			const pinX = rowStartX + pos * spacing
-			pathX.push(pinX)
-		}
-		// Final bucket
-		const bucketIdx = pos
-		const finalX = buckets[Math.min(bucketIdx, buckets.length - 1)].x
-
-		const ball = {
-			x: startX,
-			y: startY,
-			color,
-			done: false,
-			pathX,
-			row: 0,
-			targetX: pathX[0],
-			targetY: PADDING_Y,
-			speed: 1.7,
-			bucketIdx: Math.min(bucketIdx, buckets.length - 1),
-		}
-		return ball
-	}
-
-	let animRunning = false
-	function startAnimation() {
-		if (animRunning) return
-		animRunning = true
-		function frame() {
-			let anyActive = false
-			plinkoActiveBalls.forEach(ball => {
-				if (ball.done) return
-				anyActive = true
-				// Move towards target
-				const dx = ball.targetX - ball.x
-				const dy = ball.targetY - ball.y
-				const dist = Math.sqrt(dx * dx + dy * dy)
-				if (dist < ball.speed + 1) {
-					ball.x = ball.targetX
-					ball.y = ball.targetY
-					// advance to next row
-					ball.row++
-					if (ball.row < ball.pathX.length) {
-						const nextRow = ball.row
-						const rowIdx = nextRow - 1
-						const pinsInRow = rowIdx + 2
-						const usableH = H - PADDING_Y * 2 - H * 0.1
-						const rowY =
-							rowIdx < PIN_ROWS - 1
-								? PADDING_Y + (usableH / (PIN_ROWS - 1)) * rowIdx
-								: buckets[0].y
-						ball.targetX =
-							ball.pathX[nextRow] !== undefined ? ball.pathX[nextRow] : ball.x
-						ball.targetY =
-							rowIdx < PIN_ROWS - 1
-								? PADDING_Y + (usableH / (PIN_ROWS - 1)) * rowIdx
-								: buckets[ball.bucketIdx].y
-					} else {
-						// Reached bucket
-						ball.done = true
-						if (ball.onLand) ball.onLand(ball.bucketIdx)
-					}
-				} else {
-					ball.x += (dx / dist) * ball.speed
-					ball.y += (dy / dist) * ball.speed * 1.2
-				}
-			})
-
-			// Animate floating labels
-			floatingLabels = floatingLabels.filter(lbl => lbl.life > 0)
-			floatingLabels.forEach(lbl => {
-				lbl.y += lbl.vy
-				lbl.life--
-				lbl.alpha = Math.min(1, lbl.life / 30)
-			})
-
-			drawPlinko()
-			const hasLabels = floatingLabels.length > 0
-			if (anyActive || hasLabels) {
-				plinkoAnimFrame = requestAnimationFrame(frame)
-			} else {
-				animRunning = false
-				plinkoAnimFrame = null
-				plinkoActiveBalls = []
-				plinkoAnimating = false
-				document.getElementById('plinkoDropBtn').disabled = false
-				drawPlinko()
-			}
-		}
-		plinkoAnimFrame = requestAnimationFrame(frame)
-	}
-
-	function plinkoStop() {
-		if (plinkoAnimFrame) cancelAnimationFrame(plinkoAnimFrame)
-		animRunning = false
-		plinkoAnimFrame = null
-	}
-
-	function updatePlinkoBalance() {
-		updateCurrencyDisplay()
-		const el = document.getElementById('plinkoBalance')
-		if (el) el.textContent = Math.round(userCurrency)
-	}
-
-	function updatePlinkoStats() {
-		const s = plinkoStats
-		const set = (id, v) => {
-			const e = document.getElementById(id)
-			if (e) e.textContent = v
-		}
-		set('plinkoTotalGames', s.games)
-		set('plinkoTotalWon', Math.round(s.won))
-		set('plinkoTotalLost', Math.round(s.lost))
-		set('plinkoMaxMult', s.maxMult + 'x')
-	}
-
-	function showPlinkoResult(msg, type) {
-		const el = document.getElementById('plinkoResult')
-		if (!el) return
-		// Clear any pending hide
-		clearTimeout(el._hideTimer)
-		el.textContent = msg
-		el.className =
-			'result-message show ' +
-			(type === 'win' ? 'win' : type === 'loss' ? 'loss' : '')
-		el.style.display = 'block'
-		el._hideTimer = setTimeout(() => {
-			el.classList.remove('show')
-			setTimeout(() => {
-				el.style.display = 'none'
-				el.textContent = ''
-			}, 500)
-		}, 3500)
-	}
-
-	// Floating multiplier overlay on canvas
-	let floatingLabels = []
-	function showFloatingMultiplier(x, y, mult, color) {
-		floatingLabels.push({
-			x,
-			y: y - 10,
-			mult,
-			color,
-			alpha: 1.0,
-			vy: -1.2,
-			life: 90,
-		})
-	}
-	// Extend drawPlinko to also render floating labels
-	const _origDraw = drawPlinko
-	// We'll hook into animation frame instead
-
-	window.setPlinkoBetPct = function (pct) {
-		const amount = Math.max(1, Math.floor(userCurrency * pct))
-		const input = document.getElementById('plinkoBetInput')
-		if (input) input.value = amount
-	}
-
-	window.setPlinkoRows = function (rows, btn) {
-		plinkoRows = rows
-		document
-			.querySelectorAll('[id^="plinkoRows"]')
-			.forEach(b => (b.style.background = ''))
-		if (btn) {
-			btn.style.background = '#1d9bf0'
-			btn.style.color = '#fff'
-		}
-		plinkoInit()
-	}
-
-	window.setPlinkoBalls = function (n, btn) {
-		plinkoBalls = n
-		document
-			.querySelectorAll('[id^="plinkoBalls"]')
-			.forEach(b => (b.style.background = ''))
-		if (btn) {
-			btn.style.background = '#1d9bf0'
-			btn.style.color = '#fff'
-		}
-	}
-
-	window.dropPlinkoBalls = async function () {
-		if (plinkoAnimating) return
-		const betInput = document.getElementById('plinkoBetInput')
-		const bet = parseInt(betInput?.value) || 10
-		const totalBet = bet * plinkoBalls
-
-		if (userCurrency < totalBet) {
-			showPlinkoResult('❌ Недостаточно монет! Нужно ' + totalBet, 'loss')
-			return
-		}
-
-		plinkoAnimating = true
-		document.getElementById('plinkoDropBtn').disabled = true
-
-		addCurrency(-totalBet)
-		updatePlinkoBalance()
-
-		const mults = PLINKO_MULTS[plinkoRows] || PLINKO_MULTS[8]
-		let totalWin = 0
-		let landed = 0
-		const ballColors = ['#f4212e', '#1d9bf0', '#ffd700', '#00ba7c', '#8b5cf6']
-
-		plinkoActiveBalls = []
-		const ballResults = []
-
-		for (let i = 0; i < plinkoBalls; i++) {
-			const color = ballColors[i % ballColors.length]
-			const ball = createAnimatedBall(color, bucketIdx => {
-				const mult = mults[bucketIdx] || 0
-				const win = Math.round(bet * mult)
-				totalWin += win
-				if (mult > plinkoStats.maxMult) plinkoStats.maxMult = mult
-				landed++
-				ballResults.push({ mult, win, color })
-
-				// Show floating X on canvas for each ball
-				showFloatingMultiplier(
-					buckets[bucketIdx].x,
-					buckets[bucketIdx].y - 20,
-					mult,
-					color,
-				)
-
-				if (landed === plinkoBalls) {
-					addCurrency(totalWin)
-					updatePlinkoBalance()
-					saveCurrencyToFirebase()
-					plinkoStats.games += plinkoBalls
-					const net = totalWin - totalBet
-					// Build per-ball summary
-					const multsList = ballResults.map(r => `${r.mult}x`).join(' · ')
-					if (net >= 0) {
-						plinkoStats.won += net
-						showPlinkoResult(`🎉 ${multsList} → +${totalWin} монет!`, 'win')
-						if (window.SND) window.SND.casinoWin()
-					} else {
-						plinkoStats.lost += Math.abs(net)
-						showPlinkoResult(
-							`😢 ${multsList} → ${totalWin} из ${totalBet}`,
-							'loss',
-						)
-					}
-					updatePlinkoStats()
-					savePlinkoStats()
-				}
-			})
-			// Stagger launches slightly
-			setTimeout(() => {
-				plinkoActiveBalls.push(ball)
-				if (!animRunning) startAnimation()
-			}, i * 250)
-		}
-
-		if (window.SND) window.SND.casinoSpin()
-		// Kick off animation after first ball added
-		setTimeout(() => {
-			if (!animRunning && plinkoActiveBalls.length > 0) startAnimation()
-		}, 50)
-	}
-
-	function savePlinkoStats() {
-		try {
-			localStorage.setItem('plinkoStats', JSON.stringify(plinkoStats))
-		} catch (e) {}
-	}
-	function loadPlinkoStats() {
-		try {
-			const s = localStorage.getItem('plinkoStats')
-			if (s) plinkoStats = JSON.parse(s)
-		} catch (e) {}
-	}
-	loadPlinkoStats()
-	updatePlinkoStats()
 })()

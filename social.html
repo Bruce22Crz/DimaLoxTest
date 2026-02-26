@@ -894,6 +894,33 @@
     </div>
 </div>
 
+<!-- PHOTO LIGHTBOX -->
+<div id="photoLightbox" onclick="closeLightbox()" style="
+    display:none;position:fixed;inset:0;z-index:9999;
+    background:rgba(0,0,0,0.92);backdrop-filter:blur(8px);
+    align-items:center;justify-content:center;cursor:zoom-out;
+">
+    <button onclick="event.stopPropagation();closeLightbox()" style="
+        position:absolute;top:16px;right:20px;background:rgba(255,255,255,0.12);
+        border:none;color:#fff;font-size:1.4rem;width:40px;height:40px;border-radius:50%;
+        cursor:pointer;display:flex;align-items:center;justify-content:center;z-index:1;
+    ">✕</button>
+    <button id="lbPrev" onclick="event.stopPropagation();lightboxNav(-1)" style="
+        position:absolute;left:16px;top:50%;transform:translateY(-50%);
+        background:rgba(255,255,255,0.12);border:none;color:#fff;font-size:1.5rem;
+        width:44px;height:44px;border-radius:50%;cursor:pointer;display:none;
+        align-items:center;justify-content:center;
+    ">‹</button>
+    <img id="lightboxImg" style="max-width:94vw;max-height:90vh;border-radius:8px;object-fit:contain;pointer-events:none;" src="">
+    <button id="lbNext" onclick="event.stopPropagation();lightboxNav(1)" style="
+        position:absolute;right:16px;top:50%;transform:translateY(-50%);
+        background:rgba(255,255,255,0.12);border:none;color:#fff;font-size:1.5rem;
+        width:44px;height:44px;border-radius:50%;cursor:pointer;display:none;
+        align-items:center;justify-content:center;
+    ">›</button>
+    <div id="lbCounter" style="position:absolute;bottom:20px;left:50%;transform:translateX(-50%);color:rgba(255,255,255,0.6);font-size:0.85rem;"></div>
+</div>
+
 <!-- EDIT PROFILE MODAL -->
 <div class="modal-overlay" id="editProfileModal">
     <div class="modal">
@@ -1129,8 +1156,16 @@
                 backdrop-filter: blur(12px);
                 position: sticky;
                 bottom: 0;
+                flex-direction: column;
             " id="socialChatInputArea">
+                <!-- Photo preview row -->
+                <div id="chatPhotoPreviewRow" style="display:none;width:100%;gap:8px;flex-wrap:wrap;"></div>
+                <!-- Input row -->
+                <div style="display:flex;gap:10px;align-items:flex-end;width:100%;">
                 <img src="img/ico2.png" id="socialChatAvatar" style="width:36px;height:36px;border-radius:50%;object-fit:cover;flex-shrink:0;">
+                <!-- Photo attach button -->
+                <input type="file" id="chatPhotoInput" accept="image/*" style="display:none;" onchange="handleChatPhotoSelect(event)">
+                <button onclick="document.getElementById('chatPhotoInput').click()" title="Фото" style="background:none;border:none;color:var(--text2);font-size:1.2rem;cursor:pointer;padding:4px 6px;flex-shrink:0;line-height:1;transition:color 0.15s;">📷</button>
                 <button id="voiceChatBtn" onclick="toggleVoiceChat()" title="Голосовое сообщение" style="background:none;border:none;color:var(--text2);font-size:1.25rem;cursor:pointer;padding:4px 6px;flex-shrink:0;line-height:1;transition:color 0.15s;">🎙️</button>
                 <textarea id="socialChatInput" placeholder="Написать сообщение..." style="
                     flex:1;
@@ -1163,6 +1198,7 @@
                     flex-shrink: 0;
                     transition: background 0.15s;
                 " title="Отправить">➤</button>
+                </div>
             </div>
         </div>
 
@@ -1387,6 +1423,7 @@ function showProfile(uid) {
     viewingUid = uid
     loadProfile(uid)
     switchProfileTab('posts')
+    watchFollowCounts(uid)
 }
 
 function setNavActive(id) {
@@ -1466,9 +1503,10 @@ function buildPostCard(post) {
     let photosHtml = ''
     if (post.photos && post.photos.length) {
         const cols = post.photos.length === 1 ? '1fr' : (post.photos.length === 2 ? '1fr 1fr' : (post.photos.length === 3 ? '1fr 1fr 1fr' : '1fr 1fr'))
+        const photosJson = JSON.stringify(post.photos).replace(/"/g, '&quot;')
         photosHtml = `<div style="display:grid;grid-template-columns:${cols};gap:4px;border-radius:12px;overflow:hidden;margin-top:8px;">`
-        post.photos.forEach(src => {
-            photosHtml += `<img src="${src}" style="width:100%;aspect-ratio:${post.photos.length===1?'16/9':'1'};object-fit:cover;" onclick="event.stopPropagation();">`
+        post.photos.forEach((src, idx) => {
+            photosHtml += `<img src="${src}" style="width:100%;aspect-ratio:${post.photos.length===1?'16/9':'1'};object-fit:cover;cursor:zoom-in;" onclick="event.stopPropagation();openLightbox(${idx}, &quot;${photosJson}&quot;)">`
         })
         photosHtml += '</div>'
     }
@@ -2177,32 +2215,35 @@ function loadSocialChat() {
     if (!container) return
 
     // Detach old listener
-    if (socialChatRef) socialChatRef.off('child_added')
+    if (socialChatRef) {
+        socialChatRef.off()
+        socialChatRef = null
+    }
 
     container.innerHTML = '<div style="text-align:center;color:var(--text2);padding:20px;font-size:0.85rem;">Загрузка...</div>'
-    let firstBatch = []
-    let firstLoadDone = false
 
-    socialChatRef = db.ref('messages').orderByChild('timestamp')
+    // Load last 100 messages, then listen for all new ones via child_added
+    socialChatRef = db.ref('messages').orderByChild('timestamp').limitToLast(100)
 
-    // Load ALL messages (no limit)
+    const renderedKeys = new Set()
+    let initialLoadDone = false
+
     socialChatRef.once('value', snap => {
         container.innerHTML = ''
-        firstBatch = []
         snap.forEach(child => {
-            firstBatch.push({ key: child.key, ...child.val() })
+            const msg = { key: child.key, ...child.val() }
+            renderedKeys.add(msg.key)
+            appendSocialChatMsg(msg, container, false)
         })
-        firstBatch.forEach(msg => appendSocialChatMsg(msg, container, false))
-        firstLoadDone = true
-        // Scroll to bottom after initial load
+        initialLoadDone = true
         container.scrollTop = container.scrollHeight
 
-        // Now listen for new messages only
-        socialChatRef.orderByChild('timestamp').startAfter(Date.now() - 1000).on('child_added', snap => {
-            if (!firstLoadDone) return
+        // Live listener for new messages
+        socialChatRef.on('child_added', snap => {
+            if (!initialLoadDone) return
+            if (renderedKeys.has(snap.key)) return
+            renderedKeys.add(snap.key)
             const msg = { key: snap.key, ...snap.val() }
-            // Avoid duplicates
-            if (container.querySelector(`[data-msg-id="${snap.key}"]`)) return
             appendSocialChatMsg(msg, container, true)
         })
     })
@@ -2239,7 +2280,7 @@ function appendSocialChatMsg(msg, container, scroll) {
 
     let content = ''
     if (msg.text) content += `<div style="font-size:0.92rem;line-height:1.5;word-break:break-word;">${esc(msg.text)}</div>`
-    if (msg.image) content += `<img src="${msg.image}" style="max-width:220px;border-radius:10px;margin-top:4px;cursor:pointer;" onclick="this.requestFullscreen?.()" loading="lazy">`
+    if (msg.image) content += `<img src="${msg.image}" style="max-width:220px;border-radius:10px;margin-top:4px;cursor:zoom-in;" onclick="openLightbox(0, JSON.stringify(['${msg.image}']))" loading="lazy">`
     if (msg.voice) content += buildVoicePlayerWidget(msg.voice, msg.duration||0, isMe)
 
     // Placeholder avatar while loading social profile
@@ -2320,18 +2361,38 @@ async function sendSocialChatMessage() {
     if (!currentUser || !currentUserData) { showToast('Войдите, чтобы писать'); return; }
     const input = document.getElementById('socialChatInput')
     const text = input.value.trim()
-    if (!text) return
+    const photo = window._chatPendingPhoto || null
+
+    if (!text && !photo) return
+
     input.value = ''
     input.style.height = 'auto'
 
     try {
-        await db.ref('messages').push({
-            text,
+        const msgObj = {
             uid: currentUser.uid,
             username: currentUserData.name || currentUserData.username,
             avatar: currentUserData.avatar || currentUser.photoURL || '',
             timestamp: Date.now(),
-        })
+        }
+        if (text) msgObj.text = text
+
+        if (photo) {
+            // Upload photo to Firebase Storage
+            const sendBtn = document.querySelector('#socialChatInputArea button[onclick="sendSocialChatMessage()"]')
+            if (sendBtn) { sendBtn.disabled = true; sendBtn.textContent = '⏳' }
+            try {
+                const ref = storage.ref(`chat_photos/${currentUser.uid}_${Date.now()}.jpg`)
+                await ref.put(photo)
+                msgObj.image = await ref.getDownloadURL()
+            } finally {
+                if (sendBtn) { sendBtn.disabled = false; sendBtn.textContent = '➤' }
+            }
+            window._chatPendingPhoto = null
+            clearChatPhotoPreview()
+        }
+
+        await db.ref('messages').push(msgObj)
     } catch(e) {
         showToast('Ошибка отправки: ' + e.message)
         input.value = text
@@ -2516,6 +2577,93 @@ auth.onAuthStateChanged(user => {
     const btn = document.getElementById('navAdmin')
     if (btn) btn.style.display = (user && user.email === ADMIN_EMAIL) ? 'flex' : 'none'
 })
+
+// ===== PHOTO LIGHTBOX =====
+let _lbPhotos = []
+let _lbIndex = 0
+
+function openLightbox(index, photosJson) {
+    try {
+        _lbPhotos = typeof photosJson === 'string' ? JSON.parse(photosJson) : photosJson
+    } catch(e) { _lbPhotos = [photosJson] }
+    _lbIndex = index
+    _updateLightbox()
+    const lb = document.getElementById('photoLightbox')
+    lb.style.display = 'flex'
+    document.body.style.overflow = 'hidden'
+    document.addEventListener('keydown', _lbKeyHandler)
+}
+
+function _updateLightbox() {
+    document.getElementById('lightboxImg').src = _lbPhotos[_lbIndex]
+    const multi = _lbPhotos.length > 1
+    document.getElementById('lbPrev').style.display = multi ? 'flex' : 'none'
+    document.getElementById('lbNext').style.display = multi ? 'flex' : 'none'
+    document.getElementById('lbCounter').textContent = multi ? `${_lbIndex + 1} / ${_lbPhotos.length}` : ''
+}
+
+function lightboxNav(dir) {
+    _lbIndex = (_lbIndex + dir + _lbPhotos.length) % _lbPhotos.length
+    _updateLightbox()
+}
+
+function closeLightbox() {
+    document.getElementById('photoLightbox').style.display = 'none'
+    document.body.style.overflow = ''
+    document.removeEventListener('keydown', _lbKeyHandler)
+}
+
+function _lbKeyHandler(e) {
+    if (e.key === 'Escape') closeLightbox()
+    else if (e.key === 'ArrowLeft') lightboxNav(-1)
+    else if (e.key === 'ArrowRight') lightboxNav(1)
+}
+
+// ===== CHAT PHOTO =====
+window._chatPendingPhoto = null
+
+function handleChatPhotoSelect(e) {
+    const file = e.target.files[0]
+    if (!file) return
+    e.target.value = ''
+    window._chatPendingPhoto = file
+    const url = URL.createObjectURL(file)
+    const row = document.getElementById('chatPhotoPreviewRow')
+    row.style.display = 'flex'
+    row.innerHTML = `
+        <div style="position:relative;display:inline-block;">
+            <img src="${url}" style="height:80px;border-radius:10px;object-fit:cover;cursor:zoom-in;" onclick="openLightbox(0, JSON.stringify(['${url}']))">
+            <button onclick="clearChatPhotoPreview()" style="position:absolute;top:-6px;right:-6px;background:var(--danger);color:#fff;border:none;border-radius:50%;width:20px;height:20px;font-size:0.75rem;cursor:pointer;display:flex;align-items:center;justify-content:center;padding:0;">✕</button>
+        </div>
+    `
+}
+
+function clearChatPhotoPreview() {
+    window._chatPendingPhoto = null
+    const row = document.getElementById('chatPhotoPreviewRow')
+    if (row) { row.style.display = 'none'; row.innerHTML = '' }
+}
+
+// ===== FIX: следим за реальным числом подписок через real-time listener =====
+function watchFollowCounts(uid) {
+    // Following: count children of social_follows/{uid}
+    db.ref(`social_follows/${uid}`).on('value', snap => {
+        const el = document.getElementById('profileFollowing')
+        if (el && document.getElementById('profileView').style.display !== 'none') {
+            el.textContent = snap.numChildren()
+        }
+    })
+    // Followers: scan all — heavy, do once on profile load (already done in loadProfile)
+    // For real-time updates of followers, listen to social_follows and recount
+    db.ref('social_follows').on('value', snap => {
+        const el = document.getElementById('profileFollowers')
+        if (el && document.getElementById('profileView').style.display !== 'none') {
+            let count = 0
+            snap.forEach(node => { if (node.child(uid).exists()) count++ })
+            el.textContent = count
+        }
+    })
+}
 
 // ===== ADMIN PANEL JS =====
 function showAdmin() {

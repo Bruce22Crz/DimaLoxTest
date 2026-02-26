@@ -2717,6 +2717,16 @@ async function refreshFollowersCount(uid) {
 }
 
 // ===== DEBUG HELPER =====
+window.debugFollowing = async function(uid) {
+    uid = uid || viewingUid || currentUser?.uid
+    console.log('=== debugFollowing for uid:', uid, '===')
+    const snap = await db.ref(`social_follows/${uid}`).once('value')
+    console.log('social_follows/'+uid+' numChildren:', snap.numChildren())
+    console.log('raw val:', JSON.stringify(snap.val()))
+    snap.forEach(c => console.log('  child key:', c.key, 'val:', c.val()))
+}
+console.log('TIP2: run debugFollowing() to check following data')
+
 window.debugFollowers = async function(uid) {
     uid = uid || viewingUid || currentUser?.uid
     console.log('=== debugFollowers for uid:', uid, '===')

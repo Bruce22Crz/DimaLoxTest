@@ -754,12 +754,10 @@ function updateCurrencyDisplay() {
 	const cb = document.getElementById('casinoBalance')
 	const sb = document.getElementById('slotsBalance')
 	const eb = document.getElementById('ethBalance')
-	const pb = document.getElementById('plinkoBalance')
 	if (hb) hb.textContent = userCurrency.toFixed(1)
 	if (cb) cb.textContent = userCurrency.toFixed(1)
 	if (sb) sb.textContent = userCurrency.toFixed(1)
 	if (eb) eb.textContent = userCurrency.toFixed(1)
-	if (pb) pb.textContent = Math.round(userCurrency)
 }
 
 async function saveCurrencyToFirebase() {
@@ -5625,12 +5623,15 @@ window.adminDeletePromo = async function (code) {
 		}
 
 		const mults = PLINKO_MULTS[plinkoRows] || PLINKO_MULTS[8]
-		const bucketW = usableW / mults.length
-		const bucketY = H - H * 0.12
+		const totalBucketW = W - PADDING_X * 2
+		const bucketW = totalBucketW / mults.length
+		const bucketH = Math.max(28, H * 0.075)
+		const bucketY = H - bucketH / 2 - 6
 		buckets = mults.map((m, i) => ({
 			x: PADDING_X + i * bucketW + bucketW / 2,
 			y: bucketY,
-			w: bucketW - 2,
+			w: bucketW - 3,
+			h: bucketH,
 			mult: m,
 		}))
 
@@ -5658,18 +5659,25 @@ window.adminDeletePromo = async function (code) {
 		const mults = PLINKO_MULTS[plinkoRows] || PLINKO_MULTS[8]
 		buckets.forEach((b, i) => {
 			const color = getBucketColor(b.mult)
-			ctx.fillStyle = color + '33'
-			ctx.strokeStyle = color
-			ctx.lineWidth = 1.5
-			const bh = H * 0.085
+			const bh = b.h || Math.max(28, H * 0.075)
 			const rx = b.x - b.w / 2
 			const ry = b.y - bh / 2
+
+			// Fill
+			ctx.fillStyle = color + '33'
 			roundRect(ctx, rx, ry, b.w, bh, 5)
 			ctx.fill()
+
+			// Border
+			ctx.strokeStyle = color
+			ctx.lineWidth = 1.5
+			roundRect(ctx, rx, ry, b.w, bh, 5)
 			ctx.stroke()
 
+			// Text — size based on bucket width
+			const fontSize = Math.max(9, Math.min(13, b.w * 0.38))
 			ctx.fillStyle = color
-			ctx.font = `bold ${Math.max(9, W * 0.025)}px Inter, sans-serif`
+			ctx.font = `bold ${fontSize}px Inter, sans-serif`
 			ctx.textAlign = 'center'
 			ctx.textBaseline = 'middle'
 			ctx.fillText(b.mult + 'x', b.x, b.y)
@@ -5838,6 +5846,7 @@ window.adminDeletePromo = async function (code) {
 	}
 
 	function updatePlinkoBalance() {
+		updateCurrencyDisplay()
 		const el = document.getElementById('plinkoBalance')
 		if (el) el.textContent = Math.round(userCurrency)
 	}
@@ -5857,19 +5866,19 @@ window.adminDeletePromo = async function (code) {
 	function showPlinkoResult(msg, type) {
 		const el = document.getElementById('plinkoResult')
 		if (!el) return
+		// Clear any pending hide
+		clearTimeout(el._hideTimer)
 		el.textContent = msg
 		el.className =
 			'result-message show ' +
 			(type === 'win' ? 'win' : type === 'loss' ? 'loss' : '')
 		el.style.display = 'block'
-		setTimeout(() => {
-			if (el.textContent === msg) {
-				el.classList.remove('show')
-				setTimeout(() => {
-					el.textContent = ''
-					el.style.display = 'none'
-				}, 500)
-			}
+		el._hideTimer = setTimeout(() => {
+			el.classList.remove('show')
+			setTimeout(() => {
+				el.style.display = 'none'
+				el.textContent = ''
+			}, 500)
 		}, 3500)
 	}
 
@@ -5964,6 +5973,8 @@ window.adminDeletePromo = async function (code) {
 
 				if (landed === plinkoBalls) {
 					addCurrency(totalWin)
+					updatePlinkoBalance()
+					saveCurrencyToFirebase()
 					plinkoStats.games += plinkoBalls
 					const net = totalWin - totalBet
 					// Build per-ball summary
@@ -5979,7 +5990,6 @@ window.adminDeletePromo = async function (code) {
 							'loss',
 						)
 					}
-					updatePlinkoBalance()
 					updatePlinkoStats()
 					savePlinkoStats()
 				}

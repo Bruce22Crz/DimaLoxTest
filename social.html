@@ -1514,10 +1514,12 @@ function buildPostCard(post) {
     let photosHtml = ''
     if (post.photos && post.photos.length) {
         const cols = post.photos.length === 1 ? '1fr' : (post.photos.length === 2 ? '1fr 1fr' : (post.photos.length === 3 ? '1fr 1fr 1fr' : '1fr 1fr'))
-        const photosJson = JSON.stringify(post.photos).replace(/"/g, '&quot;')
+        const postKey = 'pk_' + (post.id || (post.createdAt + '_' + post.authorUid))
+        window._postPhotosRegistry = window._postPhotosRegistry || {}
+        window._postPhotosRegistry[postKey] = post.photos
         photosHtml = `<div style="display:grid;grid-template-columns:${cols};gap:4px;border-radius:12px;overflow:hidden;margin-top:8px;">`
         post.photos.forEach((src, idx) => {
-            photosHtml += `<img src="${src}" style="width:100%;${post.photos.length===1?'max-height:480px;':'aspect-ratio:1;'}object-fit:${post.photos.length===1?'contain':'cover'};background:#111;cursor:zoom-in;border-radius:4px;" onclick="event.stopPropagation();openLightbox(${idx}, &quot;${photosJson}&quot;)">`
+            photosHtml += `<img src="${src}" style="width:100%;${post.photos.length===1?'max-height:480px;':'aspect-ratio:1;'}object-fit:${post.photos.length===1?'contain':'cover'};background:#111;cursor:zoom-in;border-radius:4px;" onclick="event.stopPropagation();openLightboxByKey(${idx},'${postKey}')">`
         })
         photosHtml += '</div>'
     }
@@ -1880,7 +1882,14 @@ async function loadProfile(uid) {
     ])
     const realFollowing = followingSnap.numChildren()
     let realFollowers = 0
-    allFollowsSnap.forEach(node => { if (node.child(uid).exists()) realFollowers++ })
+    console.log('[PROFILE] loading followers for uid:', uid)
+    console.log('[PROFILE] social_follows total nodes:', allFollowsSnap.numChildren())
+    allFollowsSnap.forEach(node => {
+        const has = node.child(uid).exists()
+        console.log('[PROFILE] checking follower node:', node.key, '-> has follow?', has)
+        if (has) realFollowers++
+    })
+    console.log('[PROFILE] realFollowing:', realFollowing, 'realFollowers:', realFollowers)
     document.getElementById('profileFollowing').textContent = realFollowing
     document.getElementById('profileFollowers').textContent = realFollowers
 
@@ -2620,6 +2629,12 @@ function openLightbox(index, photosJson) {
     document.addEventListener('keydown', _lbKeyHandler)
 }
 
+function openLightboxByKey(index, postKey) {
+    const photos = (window._postPhotosRegistry || {})[postKey]
+    if (!photos) { console.warn('openLightboxByKey: no photos for key', postKey); return }
+    openLightbox(index, photos)
+}
+
 function _updateLightbox() {
     document.getElementById('lightboxImg').src = _lbPhotos[_lbIndex]
     const multi = _lbPhotos.length > 1
@@ -2672,19 +2687,23 @@ function clearChatPhotoPreview() {
 
 // ===== FIX: следим за реальным числом подписок через real-time listener =====
 function watchFollowCounts(uid) {
+    console.log('[FOLLOW] watchFollowCounts called for uid:', uid)
     // Following: count children of social_follows/{uid}
     db.ref(`social_follows/${uid}`).on('value', snap => {
+        console.log('[FOLLOW] following count:', snap.numChildren(), 'for uid:', uid)
         const el = document.getElementById('profileFollowing')
         if (el) el.textContent = snap.numChildren()
     })
     // Followers: scan all social_follows and count who follows this uid
     db.ref('social_follows').on('value', snap => {
+        let count = 0
+        snap.forEach(node => {
+            const exists = node.child(uid).exists()
+            if (exists) { count++; console.log('[FOLLOW] follower found:', node.key) }
+        })
+        console.log('[FOLLOW] total followers for', uid, ':', count, '| total nodes in social_follows:', snap.numChildren())
         const el = document.getElementById('profileFollowers')
-        if (el) {
-            let count = 0
-            snap.forEach(node => { if (node.child(uid).exists()) count++ })
-            el.textContent = count
-        }
+        if (el) el.textContent = count
     })
 }
 

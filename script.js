@@ -754,10 +754,12 @@ function updateCurrencyDisplay() {
 	const cb = document.getElementById('casinoBalance')
 	const sb = document.getElementById('slotsBalance')
 	const eb = document.getElementById('ethBalance')
+	const pb = document.getElementById('plinkoBalance')
 	if (hb) hb.textContent = userCurrency.toFixed(1)
 	if (cb) cb.textContent = userCurrency.toFixed(1)
 	if (sb) sb.textContent = userCurrency.toFixed(1)
 	if (eb) eb.textContent = userCurrency.toFixed(1)
+	if (pb) pb.textContent = Math.round(userCurrency)
 }
 
 async function saveCurrencyToFirebase() {
@@ -5857,11 +5859,17 @@ window.adminDeletePromo = async function (code) {
 		if (!el) return
 		el.textContent = msg
 		el.className =
-			'result-message ' +
+			'result-message show ' +
 			(type === 'win' ? 'win' : type === 'loss' ? 'loss' : '')
 		el.style.display = 'block'
 		setTimeout(() => {
-			if (el.textContent === msg) el.textContent = ''
+			if (el.textContent === msg) {
+				el.classList.remove('show')
+				setTimeout(() => {
+					el.textContent = ''
+					el.style.display = 'none'
+				}, 500)
+			}
 		}, 3500)
 	}
 

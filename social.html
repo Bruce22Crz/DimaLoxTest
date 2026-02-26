@@ -1177,6 +1177,11 @@ auth.onAuthStateChanged(async user => {
             document.getElementById('usernameSetup').classList.add('open')
         } else {
             currentUserData = snap.val()
+            // Sync Google avatar if user has photoURL and it differs
+            if (user.photoURL && currentUserData.avatar !== user.photoURL) {
+                await db.ref(`social_users/${user.uid}`).update({ avatar: user.photoURL })
+                currentUserData.avatar = user.photoURL
+            }
             onUserReady()
         }
     } else {
@@ -2126,6 +2131,7 @@ function appendSocialChatMsg(msg, container, scroll) {
     const avatarId = `av-${msg.key}`
     const nameId = `nm-${msg.key}`
 
+    // Use msg.avatar if available for instant display
     const avatarHtml = msg.uid
         ? `<div id="${avatarId}" style="
             width:36px;height:36px;border-radius:50%;
@@ -2133,7 +2139,9 @@ function appendSocialChatMsg(msg, container, scroll) {
             display:flex;align-items:center;justify-content:center;
             font-size:0.88rem;font-weight:700;color:#fff;flex-shrink:0;
             cursor:pointer;overflow:hidden;
-          " onclick="showProfile('${msg.uid}')">${avatarChar}</div>`
+          " onclick="showProfile('${msg.uid}')">${msg.avatar
+            ? `<img src="${msg.avatar}" style="width:36px;height:36px;object-fit:cover;border-radius:50%;display:block;" onerror="this.parentElement.innerHTML='${avatarChar}'">`
+            : avatarChar}</div>`
         : `<div style="
             width:36px;height:36px;border-radius:50%;
             background:var(--bg4);
@@ -2206,6 +2214,7 @@ async function sendSocialChatMessage() {
             text,
             uid: currentUser.uid,
             username: currentUserData.name || currentUserData.username,
+            avatar: currentUserData.avatar || currentUser.photoURL || '',
             timestamp: Date.now(),
         })
     } catch(e) {

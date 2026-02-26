@@ -5216,10 +5216,20 @@ window.adminDeletePromo = async function (code) {
 	let plinkoBallsCount = 1
 	let plinkoAnimating = false
 	let plinkoStats = { games: 0, won: 0, lost: 0, maxMult: 0 }
-	try {
-		const _ps = localStorage.getItem('plinkoStats')
-		if (_ps) plinkoStats = JSON.parse(_ps)
-	} catch (e) {}
+	;(function () {
+		try {
+			const s = localStorage.getItem('plinkoStats')
+			if (s) plinkoStats = JSON.parse(s)
+		} catch (e) {}
+		const sg = document.getElementById('plinkoTotalGames')
+		const sw = document.getElementById('plinkoTotalWon')
+		const sl = document.getElementById('plinkoTotalLost')
+		const sm = document.getElementById('plinkoMaxMult')
+		if (sg) sg.textContent = plinkoStats.games
+		if (sw) sw.textContent = Math.round(plinkoStats.won)
+		if (sl) sl.textContent = Math.round(plinkoStats.lost)
+		if (sm) sm.textContent = plinkoStats.maxMult + 'x'
+	})()
 
 	// Multiplier tables by row count (center = low, edges = high)
 	const MULT_TABLES = {
@@ -5285,35 +5295,25 @@ window.adminDeletePromo = async function (code) {
 			}
 		}
 
-		// Draw buckets — evenly fill full canvas width
-		const bucketH = Math.max(26, cellW * 0.8)
-		const bucketsY = H - bucketH - 4
-		const bucketSlot = W / mults.length
-		const gap = Math.max(2, bucketSlot * 0.06)
+		// Draw buckets
+		const bucketsY = cellW * 1.5 + plinkoRows * cellW + cellW * 0.5
+		const bucketW = cellW * 0.85
+		const xOffset = (W - mults.length * cellW) / 2
 		mults.forEach((m, i) => {
-			const bx = i * bucketSlot + gap / 2
-			const bw = bucketSlot - gap
+			const bx = xOffset + i * cellW + cellW * 0.075
 			const isHit = highlighted !== undefined && highlighted === i
-			const color = getMultColor(m)
-			ctx.globalAlpha = isHit ? 1 : 0.9
-			ctx.fillStyle = isHit ? 'rgba(255,255,255,0.25)' : color + '33'
+			ctx.fillStyle = isHit ? '#ffffff' : getMultColor(m)
+			ctx.globalAlpha = isHit ? 1 : 0.85
 			ctx.beginPath()
-			ctx.roundRect(bx, bucketsY, bw, bucketH, 4)
+			ctx.roundRect(bx, bucketsY, bucketW, cellW * 0.75, 4)
 			ctx.fill()
-			ctx.strokeStyle = isHit ? '#ffffff' : color
-			ctx.lineWidth = isHit ? 2.5 : 1.5
-			ctx.beginPath()
-			ctx.roundRect(bx, bucketsY, bw, bucketH, 4)
-			ctx.stroke()
 			ctx.globalAlpha = 1
-			const fontSize = Math.max(7, Math.min(13, bw * 0.36))
-			ctx.fillStyle = isHit ? '#ffffff' : color
-			ctx.font = `bold ${fontSize}px Inter,sans-serif`
+			ctx.fillStyle = '#fff'
+			ctx.font = `bold ${Math.max(8, cellW * 0.28)}px Inter,sans-serif`
 			ctx.textAlign = 'center'
-			ctx.textBaseline = 'middle'
-			ctx.fillText(m + 'x', bx + bw / 2, bucketsY + bucketH / 2)
+			const label = m >= 1 ? m + 'x' : m + 'x'
+			ctx.fillText(label, bx + bucketW / 2, bucketsY + cellW * 0.52)
 		})
-		ctx.textBaseline = 'alphabetic'
 	}
 
 	function simulatePath(rows) {
@@ -5324,96 +5324,54 @@ window.adminDeletePromo = async function (code) {
 		return pos
 	}
 
-	async function animateBall(setup, path, color, onLand) {
-		const { ctx, W, cellW } = setup
-		const mults = MULT_TABLES[plinkoRows]
-		const bucketCount = mults.length
-		const r = cellW * 0.18
-
-		let ballPos = 0
-		let steps = 0
-
+	// animateBall — uses setTimeout so it always completes regardless of tab visibility
+	function animateBall(setup, path, color) {
 		return new Promise(resolve => {
+			const { ctx, W, H, cellW } = setup
+			const mults = MULT_TABLES[plinkoRows]
+			const r = cellW * 0.18
 			let row = 0
+			let ballPos = 0
+
 			function step() {
 				drawBoard(setup)
-				// Draw all previous balls (simplified - just redraw board)
-				const totalRows = plinkoRows
-				const xStart_row = (x, rowIdx) =>
-					(W - (rowIdx + 1) * cellW) / 2 + x * cellW
 
-				const col = path[row] !== undefined ? path[row] : ballPos
+				// draw ball at current row
 				const pegsInRow = row + 2
 				const xStartRow = (W - (pegsInRow - 1) * cellW) / 2
 				const x = xStartRow + ballPos * cellW
 				const y = cellW * 1.5 + row * cellW
 
-				// Draw ball
 				ctx.beginPath()
 				ctx.arc(x, y, r, 0, Math.PI * 2)
 				ctx.fillStyle = color
+				ctx.shadowColor = color
+				ctx.shadowBlur = 8
 				ctx.fill()
+				ctx.shadowBlur = 0
 				ctx.strokeStyle = 'rgba(255,255,255,0.6)'
 				ctx.lineWidth = 1.5
 				ctx.stroke()
 
+				if (path[row] !== undefined) ballPos = path[row]
 				row++
-				if (path[row - 1] !== undefined) ballPos = path[row - 1]
 
-				if (row >= plinkoRows) {
-					// Final bucket position
-					const bucketIdx = ballPos
+				if (row > plinkoRows) {
+					const bucketIdx = Math.min(ballPos, mults.length - 1)
 					drawBoard(setup, bucketIdx)
-					onLand(bucketIdx)
-					resolve()
+					resolve(bucketIdx)
 					return
 				}
-				requestAnimationFrame(step)
+				setTimeout(step, 60)
 			}
 			step()
 		})
 	}
 
-	window.setPlinkoRows = function (n, btn) {
-		plinkoRows = n
-		document.querySelectorAll('[id^="plinkoRows"]').forEach(b => {
-			b.style.background = ''
-			b.style.color = ''
-		})
-		if (btn) {
-			btn.style.background = '#1d9bf0'
-			btn.style.color = '#fff'
-		}
-		renderPlinkoBoard()
-	}
-
-	window.setPlinkoBalls = function (n, btn) {
-		plinkoBallsCount = n
-		document.querySelectorAll('[id^="plinkoBalls"]').forEach(b => {
-			b.style.background = ''
-			b.style.color = ''
-		})
-		if (btn) {
-			btn.style.background = '#1d9bf0'
-			btn.style.color = '#fff'
-		}
-	}
-
-	window.setPlinkoBetPct = function (pct) {
-		const amount = Math.max(1, Math.floor(userCurrency * pct))
-		const inp = document.getElementById('plinkoBetInput')
-		if (inp) inp.value = amount
-	}
-
-	function renderPlinkoBoard() {
-		const setup = setupCanvas()
-		if (!setup) return
-		drawBoard(setup)
-	}
-
 	function updatePlinkoBalance() {
 		const el = document.getElementById('plinkoBalance')
 		if (el) el.textContent = Math.round(userCurrency)
+		updateCurrencyDisplay()
 		saveCurrencyToFirebase()
 	}
 
@@ -5421,7 +5379,12 @@ window.adminDeletePromo = async function (code) {
 		if (plinkoAnimating) return
 
 		if (!window.currentUser) {
-			showPlinkoMsg('❌ Войдите в аккаунт!', '#f4212e')
+			showPlinkoMsg(
+				'❌ Войдите в аккаунт!',
+				'#f4212e',
+				'rgba(244,33,46,0.12)',
+				'#f4212e',
+			)
 			return
 		}
 
@@ -5430,7 +5393,12 @@ window.adminDeletePromo = async function (code) {
 		const totalBet = betPerBall * plinkoBallsCount
 
 		if (userCurrency < totalBet) {
-			showPlinkoMsg('❌ Недостаточно монет! Нужно ' + totalBet, '#f4212e')
+			showPlinkoMsg(
+				'❌ Недостаточно монет! Нужно ' + totalBet,
+				'#f4212e',
+				'rgba(244,33,46,0.12)',
+				'#f4212e',
+			)
 			return
 		}
 
@@ -5438,6 +5406,7 @@ window.adminDeletePromo = async function (code) {
 		const btn = document.getElementById('plinkoDropBtn')
 		if (btn) btn.disabled = true
 
+		// Deduct bet immediately
 		addCurrency(-totalBet)
 		updatePlinkoBalance()
 
@@ -5451,10 +5420,9 @@ window.adminDeletePromo = async function (code) {
 
 		const mults = MULT_TABLES[plinkoRows]
 		const colors = ['#ff3366', '#33aaff', '#ffcc00', '#44dd88', '#ff9900']
-		let totalWin = 0
-		let bestMult = 0
-		const allMults = []
 
+		// Pre-calculate all results BEFORE animation
+		const results = []
 		for (let b = 0; b < plinkoBallsCount; b++) {
 			const path = []
 			let pos = 0
@@ -5466,27 +5434,41 @@ window.adminDeletePromo = async function (code) {
 			const bucketIdx = Math.min(pos, mults.length - 1)
 			const mult = mults[bucketIdx]
 			const win = Math.round(betPerBall * mult)
-			totalWin += win
-			if (mult > bestMult) bestMult = mult
-			allMults.push(mult)
-
-			await animateBall(setup, path, colors[b % colors.length], () => {})
-			await new Promise(r => setTimeout(r, 120))
+			results.push({
+				path,
+				mult,
+				win,
+				bucketIdx,
+				color: colors[b % colors.length],
+			})
 		}
 
-		// Add winnings to balance
+		// Calculate totals
+		const totalWin = results.reduce((s, r) => s + r.win, 0)
+		const bestMult = results.reduce((m, r) => Math.max(m, r.mult), 0)
+		const allMults = results.map(r => r.mult + 'x').join(' · ')
+
+		// Run animations (purely visual, result already known)
+		for (const res of results) {
+			await animateBall(setup, res.path, res.color)
+			await new Promise(r => setTimeout(r, 80))
+		}
+
+		// Apply winnings
 		addCurrency(totalWin)
 		updatePlinkoBalance()
 
 		// Update stats
+		const net = totalWin - totalBet
 		plinkoStats.games += plinkoBallsCount
-		if (totalWin > totalBet) plinkoStats.won += totalWin - totalBet
-		else plinkoStats.lost += totalBet - totalWin
+		if (net > 0) plinkoStats.won += net
+		else plinkoStats.lost += Math.abs(net)
 		if (bestMult > plinkoStats.maxMult) plinkoStats.maxMult = bestMult
 		try {
 			localStorage.setItem('plinkoStats', JSON.stringify(plinkoStats))
 		} catch (e) {}
 
+		// Show stats in DOM
 		const sg = document.getElementById('plinkoTotalGames')
 		const sw = document.getElementById('plinkoTotalWon')
 		const sl = document.getElementById('plinkoTotalLost')
@@ -5494,27 +5476,26 @@ window.adminDeletePromo = async function (code) {
 		if (sg) sg.textContent = plinkoStats.games
 		if (sw) sw.textContent = Math.round(plinkoStats.won)
 		if (sl) sl.textContent = Math.round(plinkoStats.lost)
-		if (sm) sm.textContent = bestMult + 'x'
+		if (sm) sm.textContent = plinkoStats.maxMult + 'x'
 
-		const net = totalWin - totalBet
-		const multStr = allMults.map(m => m + 'x').join(' · ')
+		// Show result message
 		if (net > 0) {
 			showPlinkoMsg(
-				'🎉 ' + multStr + ' → +' + net + ' монет!',
+				'🎉 ' + allMults + '  →  +' + net + ' монет!',
 				'#00ba7c',
 				'rgba(0,186,124,0.12)',
 				'#00ba7c',
 			)
 		} else if (net === 0) {
 			showPlinkoMsg(
-				'↩️ ' + multStr + ' → Ничья',
+				'↩️ ' + allMults + '  →  Ничья!',
 				'#71767b',
-				'rgba(113,118,123,0.12)',
+				'rgba(113,118,123,0.1)',
 				'#71767b',
 			)
 		} else {
 			showPlinkoMsg(
-				'💸 ' + multStr + ' → -' + Math.abs(net) + ' монет',
+				'💸 ' + allMults + '  →  -' + Math.abs(net) + ' монет',
 				'#f4212e',
 				'rgba(244,33,46,0.12)',
 				'#f4212e',
@@ -5531,23 +5512,21 @@ window.adminDeletePromo = async function (code) {
 		if (!el) return
 		clearTimeout(el._t)
 		el.innerHTML = text
-		el.style.cssText = [
-			'display:block',
-			'opacity:1',
-			'transform:none',
-			'margin-top:12px',
-			'padding:14px 18px',
-			'border-radius:12px',
-			'font-size:1.1rem',
-			'font-weight:700',
-			'text-align:center',
-			'transition:opacity 0.4s',
-			'color:' + (color || '#fff'),
-			'background:' + (bg || 'rgba(255,255,255,0.08)'),
-			'border:2px solid ' + (border || color || '#fff'),
-		].join(';')
+		el.style.display = 'block'
+		el.style.opacity = '1'
+		el.style.transform = 'none'
+		el.style.margin = '12px 0 0 0'
+		el.style.padding = '14px 18px'
+		el.style.borderRadius = '12px'
+		el.style.fontSize = '1.1rem'
+		el.style.fontWeight = '700'
+		el.style.textAlign = 'center'
+		el.style.color = color || '#fff'
+		el.style.background = bg || 'rgba(255,255,255,0.08)'
+		el.style.border = '2px solid ' + (border || color || '#fff')
 		el._t = setTimeout(() => {
 			el.style.opacity = '0'
+			el.style.transition = 'opacity 0.4s'
 			setTimeout(() => {
 				el.style.display = 'none'
 				el.innerHTML = ''

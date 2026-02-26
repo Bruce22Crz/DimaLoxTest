@@ -911,7 +911,7 @@
         width:44px;height:44px;border-radius:50%;cursor:pointer;display:none;
         align-items:center;justify-content:center;
     ">‹</button>
-    <img id="lightboxImg" style="max-width:94vw;max-height:90vh;border-radius:8px;object-fit:contain;pointer-events:none;" src="">
+    <img id="lightboxImg" style="max-width:96vw;max-height:92vh;border-radius:8px;object-fit:contain;pointer-events:none;display:block;" src="">
     <button id="lbNext" onclick="event.stopPropagation();lightboxNav(1)" style="
         position:absolute;right:16px;top:50%;transform:translateY(-50%);
         background:rgba(255,255,255,0.12);border:none;color:#fff;font-size:1.5rem;
@@ -1165,8 +1165,19 @@
                 <img src="img/ico2.png" id="socialChatAvatar" style="width:36px;height:36px;border-radius:50%;object-fit:cover;flex-shrink:0;">
                 <!-- Photo attach button -->
                 <input type="file" id="chatPhotoInput" accept="image/*" style="display:none;" onchange="handleChatPhotoSelect(event)">
-                <button onclick="document.getElementById('chatPhotoInput').click()" title="Фото" style="background:none;border:none;color:var(--text2);font-size:1.2rem;cursor:pointer;padding:4px 6px;flex-shrink:0;line-height:1;transition:color 0.15s;">📷</button>
-                <button id="voiceChatBtn" onclick="toggleVoiceChat()" title="Голосовое сообщение" style="background:none;border:none;color:var(--text2);font-size:1.25rem;cursor:pointer;padding:4px 6px;flex-shrink:0;line-height:1;transition:color 0.15s;">🎙️</button>
+                <button onclick="document.getElementById('chatPhotoInput').click()" title="Фото" class="composer-tool-btn" style="flex-shrink:0;">
+                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/>
+                        <polyline points="21 15 16 10 5 21"/>
+                    </svg>
+                </button>
+                <button id="voiceChatBtn" onclick="toggleVoiceChat()" title="Голосовое сообщение" class="composer-tool-btn" style="flex-shrink:0;">
+                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/>
+                        <path d="M19 10v2a7 7 0 0 1-14 0v-2"/><line x1="12" y1="19" x2="12" y2="23"/>
+                        <line x1="8" y1="23" x2="16" y2="23"/>
+                    </svg>
+                </button>
                 <textarea id="socialChatInput" placeholder="Написать сообщение..." style="
                     flex:1;
                     background: var(--bg3);
@@ -1506,7 +1517,7 @@ function buildPostCard(post) {
         const photosJson = JSON.stringify(post.photos).replace(/"/g, '&quot;')
         photosHtml = `<div style="display:grid;grid-template-columns:${cols};gap:4px;border-radius:12px;overflow:hidden;margin-top:8px;">`
         post.photos.forEach((src, idx) => {
-            photosHtml += `<img src="${src}" style="width:100%;aspect-ratio:${post.photos.length===1?'16/9':'1'};object-fit:cover;cursor:zoom-in;" onclick="event.stopPropagation();openLightbox(${idx}, &quot;${photosJson}&quot;)">`
+            photosHtml += `<img src="${src}" style="width:100%;${post.photos.length===1?'max-height:480px;':'aspect-ratio:1;'}object-fit:${post.photos.length===1?'contain':'cover'};background:#111;cursor:zoom-in;border-radius:4px;" onclick="event.stopPropagation();openLightbox(${idx}, &quot;${photosJson}&quot;)">`
         })
         photosHtml += '</div>'
     }
@@ -1652,12 +1663,16 @@ async function publishPost() {
         if (selectedPhotos.length) postObj.photos = selectedPhotos
         if (pollData) postObj.poll = pollData
 
-        // Upload voice if attached
+        // Upload voice if attached (base64 in DB)
         if (window._voicePostBlob) {
             btn.textContent = 'Загрузка голоса...'
-            const ref = storage.ref(`voice_posts/${currentUser.uid}_${Date.now()}.webm`)
-            await ref.put(window._voicePostBlob)
-            postObj.voice = await ref.getDownloadURL()
+            const base64Voice = await new Promise((resolve, reject) => {
+                const reader = new FileReader()
+                reader.onload = () => resolve(reader.result)
+                reader.onerror = reject
+                reader.readAsDataURL(window._voicePostBlob)
+            })
+            postObj.voice = base64Voice
             postObj.voiceDuration = window._voicePostDuration || 0
             window._voicePostBlob = null
             window._voicePostDuration = 0
@@ -2531,19 +2546,23 @@ async function toggleVoiceChat() {
             stream.getTracks().forEach(t => t.stop())
             clearInterval(_voiceChatTimer)
             _voiceChatRecording = false
-            btn.textContent = '🎙️'
             btn.style.color = ''
             btn.disabled = false
+            const timerEl = document.getElementById('voiceChatTimer')
+            if (timerEl) timerEl.remove()
             if (!chunks.length) return
             const blob = new Blob(chunks, { type: 'audio/webm' })
-            btn.textContent = '⏳'
             btn.disabled = true
+            btn.style.opacity = '0.5'
             try {
-                const ref = storage.ref(`voice_chat/${currentUser.uid}_${Date.now()}.webm`)
-                await ref.put(blob)
-                const voiceUrl = await ref.getDownloadURL()
+                const base64Voice = await new Promise((resolve, reject) => {
+                    const reader = new FileReader()
+                    reader.onload = () => resolve(reader.result)
+                    reader.onerror = reject
+                    reader.readAsDataURL(blob)
+                })
                 await db.ref('messages').push({
-                    voice: voiceUrl,
+                    voice: base64Voice,
                     duration: _voiceChatSec,
                     uid: currentUser.uid,
                     username: currentUserData.name || currentUserData.username,
@@ -2554,16 +2573,23 @@ async function toggleVoiceChat() {
             } catch(e) {
                 showToast('Ошибка: ' + e.message)
             } finally {
-                btn.textContent = '🎙️'
                 btn.disabled = false
+                btn.style.opacity = ''
             }
         }
 
         _voiceChatRecorder.start(250)
+        // Add a timer label next to the button
+        const timerLabel = document.createElement('span')
+        timerLabel.id = 'voiceChatTimer'
+        timerLabel.style.cssText = 'font-size:0.75rem;color:var(--danger);font-weight:700;min-width:36px;'
+        timerLabel.textContent = '0:00'
+        btn.parentNode.insertBefore(timerLabel, btn.nextSibling)
         _voiceChatTimer = setInterval(() => {
             _voiceChatSec++
             const m = Math.floor(_voiceChatSec/60), s = _voiceChatSec%60
-            btn.textContent = `🔴 ${m}:${String(s).padStart(2,'0')}`
+            const tEl = document.getElementById('voiceChatTimer')
+            if (tEl) tEl.textContent = `${m}:${String(s).padStart(2,'0')}`
             if (_voiceChatSec >= 120) _voiceChatRecorder.stop()
         }, 1000)
     } catch(e) {
@@ -2649,15 +2675,12 @@ function watchFollowCounts(uid) {
     // Following: count children of social_follows/{uid}
     db.ref(`social_follows/${uid}`).on('value', snap => {
         const el = document.getElementById('profileFollowing')
-        if (el && document.getElementById('profileView').style.display !== 'none') {
-            el.textContent = snap.numChildren()
-        }
+        if (el) el.textContent = snap.numChildren()
     })
-    // Followers: scan all — heavy, do once on profile load (already done in loadProfile)
-    // For real-time updates of followers, listen to social_follows and recount
+    // Followers: scan all social_follows and count who follows this uid
     db.ref('social_follows').on('value', snap => {
         const el = document.getElementById('profileFollowers')
-        if (el && document.getElementById('profileView').style.display !== 'none') {
+        if (el) {
             let count = 0
             snap.forEach(node => { if (node.child(uid).exists()) count++ })
             el.textContent = count

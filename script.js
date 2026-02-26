@@ -5396,7 +5396,7 @@ function _plinkoAnimate(setup, path, color) {
 				resolve(idx)
 				return
 			}
-			setTimeout(step, 160)
+			setTimeout(step, 80)
 		}
 		setTimeout(step, 0)
 	})
